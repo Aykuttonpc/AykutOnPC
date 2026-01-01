@@ -1,0 +1,136 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@ViewData["Title"] - AykutOnPC</title>
+    
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&display=swap" rel="stylesheet">
+    
+    <!-- Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <!-- Styles -->
+    <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
+</head>
+<body>
+    
+    <nav class="navbar">
+        <a asp-controller="Home" asp-action="Index" class="nav-brand">AykutOnPC</a>
+        <div class="nav-links">
+            <a href="#builds" class="nav-link">Projects</a>
+            <a href="#specs" class="nav-link">Skills</a>
+            <a href="#" class="nav-link">About</a>
+        </div>
+    </nav>
+
+    <main>
+        @RenderBody()
+    </main>
+
+    <footer style="text-align: center; padding: 2rem; color: var(--text-muted); opacity: 0.5;">
+        &copy; 2026 AykutOnPC. Powered by .NET 9 & AI. | <a asp-controller="Admin" asp-action="Index" style="color: var(--text-muted); text-decoration: none;">Admin</a>
+    </footer>
+
+    <partial name="_AIWidget" />
+
+    <script src="~/lib/jquery/dist/jquery.min.js"></script>
+    <script src="~/js/site.js" asp-append-version="true"></script>
+    <script>
+        $(document).ready(function() {
+            // Widget Toggle
+            $('#ai-trigger-btn').click(function() {
+                $('#ai-widget-container').toggleClass('active');
+                $(this).toggleClass('active');
+            });
+            
+            $('#close-ai-widget').click(function() {
+                $('#ai-widget-container').removeClass('active');
+            });
+
+            // Send Message Logic
+            async function sendMessage() {
+                var input = $('#ai-input');
+                var message = input.val().trim();
+                var btn = $('#ai-send-btn');
+                
+                if(!message) return;
+
+                // UI Updates
+                input.val('');
+                input.prop('disabled', true);
+                btn.prop('disabled', true);
+                
+                var container = $('#ai-messages');
+                container.append(`<div class="message user-message">${escapeHtml(message)}</div>`);
+                scrollToBottom();
+
+                // Show typing indicator (optional placeholder)
+                var loadingId = 'loading-' + Date.now();
+                container.append(`<div id="${loadingId}" class="message ai-message"><i class="fa-solid fa-ellipsis fa-fade"></i></div>`);
+                scrollToBottom();
+
+                try {
+                    const response = await fetch('/api/chat/ask', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({ message: message })
+                    });
+                    
+                    const data = await response.json();
+                    
+                    $(`#${loadingId}`).remove();
+                    container.append(`<div class="message ai-message">${linkify(data.response)}</div>`);
+                } catch (error) {
+                    $(`#${loadingId}`).remove();
+                    container.append(`<div class="message ai-message" style="color: #ef4444;">Connection error. Try again.</div>`);
+                }
+
+                input.prop('disabled', false);
+                btn.prop('disabled', false);
+                input.focus();
+                scrollToBottom();
+            }
+
+            $('#ai-send-btn').click(sendMessage);
+
+            // Helpers
+            function scrollToBottom() {
+                var div = document.getElementById('ai-messages');
+                div.scrollTop = div.scrollHeight;
+            }
+
+            function escapeHtml(text) {
+                var map = {
+                    '&': '&amp;',
+                    '<': '&lt;',
+                    '>': '&gt;',
+                    '"': '&quot;',
+                    "'": '&#039;'
+                };
+                return text.replace(/[&<>"']/g, function(m) { return map[m]; });
+            }
+            
+            function linkify(text) {
+                var urlRegex = /(https?:\/\/[^\s]+)/g;
+                return text.replace(urlRegex, function(url) {
+                    return '<a href="' + url + '" target="_blank" style="color: var(--secondary); text-decoration: underline;">' + url + '</a>';
+                });
+            }
+
+            // Enter key to send
+            $('#ai-input').keypress(function(e) {
+                if(e.which == 13) {
+                    sendMessage();
+                }
+            });
+        });
+    </script>
+    @await RenderSectionAsync("Scripts", required: false)
+</body>
+</html>

@@ -1,0 +1,138 @@
+﻿@model DashboardViewModel
+@{
+    ViewData["Title"] = "Home";
+}
+
+<div class="hero">
+    <h1>
+        @(Model.SiteSettings.ContainsKey("HeroTitle") ? Html.Raw(Model.SiteSettings["HeroTitle"]) : Html.Raw("Building the Future with <br /> <span style=\"color: var(--secondary)\">.NET & Intelligence</span>"))
+    </h1>
+    <p>
+        @(Model.SiteSettings.ContainsKey("HeroSubtitle") ? Model.SiteSettings["HeroSubtitle"] : "Welcome to my digital workspace. I architect robust backends and integrate AI solutions to solve real-world problems.")
+    </p>
+    <a href="#contact" class="btn-primary">Start Collaborating</a>
+</div>
+
+<div class="container">
+    
+    <!-- Builds Section -->
+    <div id="builds" class="section-header">
+        <i class="fa-solid fa-layer-group"></i> Latest Builds
+    </div>
+    
+    <!-- Build Container for Animation -->
+    <div id="builds-container" style="position: relative; overflow: hidden; min-height: 400px;">
+        <div class="grid" id="builds-grid" style="transition: transform 0.5s ease-in-out; display: grid; grid-template-columns: repeat(3, 1fr); gap: 2rem;">
+            @if (Model.RecentBuilds.Any())
+            {
+                var builds = Model.RecentBuilds.ToList();
+                for (int i = 0; i < builds.Count; i++)
+                {
+                    var build = builds[i];
+                    <div class="card build-item" data-index="@i" style="@(i >= 6 ? "display: none;" : "")">
+                        <h3>@build.Title</h3>
+                        <p>@build.Description</p>
+                            <div style="margin-top: 1rem; display: flex; gap: 0.5rem; flex-wrap: wrap;">
+                            @foreach(var tech in build.TechStack.Split(','))
+                            {
+                                <span style="background: rgba(255,255,255,0.1); padding: 4px 8px; border-radius: 4px; font-size: 0.8rem; color: var(--secondary);">
+                                    @tech.Trim()
+                                </span>
+                            }
+                        </div>
+                    </div>
+                }
+            }
+        </div>
+    </div>
+
+    <!-- Client-side Pagination Controls -->
+    <div id="pagination-controls" style="display: flex; justify-content: center; gap: 1rem; margin-bottom: 4rem; margin-top: 2rem;">
+        <button id="btn-prev" class="btn-primary" style="padding: 0.5rem 1.5rem; font-size: 0.9rem; cursor: pointer; display: none;">
+            <i class="fa-solid fa-chevron-left"></i> Previous
+        </button>
+        
+        <span id="page-indicator" style="display: flex; align-items: center; color: var(--text-muted);">
+            Page 1
+        </span>
+
+        <button id="btn-next" class="btn-primary" style="padding: 0.5rem 1.5rem; font-size: 0.9rem; cursor: pointer;">
+            Next <i class="fa-solid fa-chevron-right"></i>
+        </button>
+    </div>
+
+    @section Scripts {
+        <script>
+            $(document).ready(function () {
+                const pageSize = 6;
+                const $items = $('.build-item');
+                const totalItems = $items.length;
+                const totalPages = Math.ceil(totalItems / pageSize);
+                let currentPage = 1;
+
+                function updateDisplay() {
+                    // Update buttons
+                    $('#btn-prev').toggle(currentPage > 1);
+                    $('#btn-next').toggle(currentPage < totalPages);
+                    $('#page-indicator').text(`Page ${currentPage} of ${totalPages}`);
+
+                    // Animate items
+                    $items.hide();
+                    const start = (currentPage - 1) * pageSize;
+                    const end = start + pageSize;
+                    
+                    // Show current page items with a fade-in effect
+                    $items.slice(start, end).fadeIn(300);
+                }
+
+                $('#btn-next').click(function () {
+                    if (currentPage < totalPages) {
+                        currentPage++;
+                        updateDisplay();
+                    }
+                });
+
+                $('#btn-prev').click(function () {
+                    if (currentPage > 1) {
+                        currentPage--;
+                        updateDisplay();
+                    }
+                });
+                
+                // Initial check
+                if (totalItems <= pageSize) {
+                   $('#pagination-controls').hide();
+                } else {
+                   updateDisplay(); 
+                }
+            });
+        </script>
+    }
+
+    <!-- Specs Section -->
+     <div id="specs" class="section-header">
+        <i class="fa-solid fa-bolt"></i> Technical Specs
+    </div>
+
+    <div class="grid">
+        @if (Model.TopSpecs.Any())
+        {
+            @foreach (var spec in Model.TopSpecs)
+            {
+                <div class="card">
+                   <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem;">
+                       <strong style="font-size: 1.1rem;">@spec.Name</strong>
+                       <span>@spec.Proficiency%</span>
+                   </div>
+                   <div class="skill-bar">
+                       <div class="skill-fill" style="width: @spec.Proficiency%"></div>
+                   </div>
+                   <div style="margin-top: 0.5rem; font-size: 0.85rem; color: var(--text-muted);">
+                       @spec.Category
+                   </div>
+                </div>
+            }
+        }
+    </div>
+
+</div>

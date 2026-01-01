@@ -1,0 +1,40 @@
+@model IEnumerable<AykutOnPC.Core.Entities.Spec>
+
+@{
+    ViewData["Title"] = "Manage Skills";
+    Layout = "_AdminLayout";
+}
+
+<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
+    <h1>Technical Specs (Skills)</h1>
+    <a asp-action="Create" class="btn-primary"><i class="fa-solid fa-plus"></i> Add New Spec</a>
+</div>
+
+<div class="grid" style="grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));">
+    @foreach (var item in Model)
+    {
+        <div class="card" style="height: auto; max-height: none;">
+            <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+                <div>
+                     <h3 style="margin-bottom: 0.5rem; display: flex; align-items: center; gap: 0.5rem;">
+                         <i class="@item.IconClass" style="color: var(--secondary); font-size: 1rem;"></i> @item.Name
+                     </h3>
+                     <span style="background: rgba(255,255,255,0.1); padding: 4px 8px; border-radius: 4px; font-size: 0.8rem; color: var(--text-muted);">
+                        @item.Category
+                     </span>
+                </div>
+                <div style="display: flex; gap: 0.5rem;">
+                    <a asp-action="Edit" asp-route-id="@item.Id" style="color: var(--primary);"><i class="fa-solid fa-pen"></i></a>
+                    <a asp-action="Delete" asp-route-id="@item.Id" style="color: #ef4444;" onclick="return confirm('Are you sure?')"><i class="fa-solid fa-trash"></i></a>
+                </div>
+            </div>
+            
+            <div class="skill-bar" style="margin-top: 1rem;">
+                <div class="skill-fill" style="width: @item.Proficiency%"></div>
+            </div>
+            <div style="text-align: right; margin-top: 0.2rem; font-size: 0.8rem; color: var(--text-muted);">
+                @item.Proficiency%
+            </div>
+        </div>
+    }
+</div>

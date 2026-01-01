@@ -1,0 +1,42 @@
+@model AykutOnPC.Core.Entities.Spec
+
+@{
+    ViewData["Title"] = "Edit Spec";
+    Layout = "_AdminLayout";
+}
+
+<h1 style="margin-bottom: 2rem;">Edit Spec</h1>
+
+<div class="card" style="height: auto; max-height: none;">
+    <form asp-action="Edit">
+        <input type="hidden" asp-for="Id" />
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem;">
+            <div style="margin-bottom: 1.5rem;">
+                <label style="display: block; margin-bottom: 0.5rem; color: var(--secondary);">Name</label>
+                <input asp-for="Name" class="form-control" style="width: 100%; padding: 0.8rem; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color: white; border-radius: 8px;" required />
+            </div>
+
+             <div style="margin-bottom: 1.5rem;">
+                <label style="display: block; margin-bottom: 0.5rem; color: var(--secondary);">Category</label>
+                <input asp-for="Category" class="form-control" style="width: 100%; padding: 0.8rem; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color: white; border-radius: 8px;" required />
+            </div>
+        </div>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem;">
+             <div style="margin-bottom: 1.5rem;">
+                <label style="display: block; margin-bottom: 0.5rem; color: var(--secondary);">Proficiency (0-100)</label>
+                <input asp-for="Proficiency" type="number" min="0" max="100" class="form-control" style="width: 100%; padding: 0.8rem; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color: white; border-radius: 8px;" required />
+            </div>
+
+             <div style="margin-bottom: 2rem;">
+                <label style="display: block; margin-bottom: 0.5rem; color: var(--secondary);">Icon Class (FontAwesome)</label>
+                <input asp-for="IconClass" class="form-control" style="width: 100%; padding: 0.8rem; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color: white; border-radius: 8px;" />
+            </div>
+        </div>
+
+        <div style="display: flex; gap: 1rem;">
+            <button type="submit" class="btn-primary">Update Spec</button>
+            <a asp-action="Index" style="padding: 1rem 2rem; color: var(--text-muted); text-decoration: none;">Cancel</a>
+        </div>
+    </form>
+</div>

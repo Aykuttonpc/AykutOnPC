@@ -1,0 +1,64 @@
+@{
+    ViewData["Title"] = "System Access";
+    Layout = null; // Standalone page
+}
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Login - AykutOnPC</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="~/css/site.css" />
+    <style>
+        body {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            background: #000;
+        }
+        .login-card {
+            background: var(--bg-card);
+            padding: 3rem;
+            border-radius: 20px;
+            width: 100%;
+            max-width: 400px;
+            border: 1px solid rgba(255,255,255,0.05);
+            box-shadow: 0 0 50px rgba(109, 40, 217, 0.2);
+            text-align: center;
+        }
+        .login-input {
+            width: 100%;
+            padding: 1rem;
+            margin-bottom: 1rem;
+            background: rgba(255,255,255,0.05);
+            border: 1px solid rgba(255,255,255,0.1);
+            color: white;
+            border-radius: 8px;
+            font-family: inherit;
+        }
+        .login-input:focus {
+            outline: none;
+            border-color: var(--primary);
+        }
+    </style>
+</head>
+<body>
+    <div class="login-card">
+        <h2 style="margin-bottom: 2rem; color: var(--text-main);">System Access</h2>
+        
+        @if (ViewBag.Error != null)
+        {
+            <div style="color: #ef4444; margin-bottom: 1rem;">@ViewBag.Error</div>
+        }
+
+        <form method="post">
+            <input type="text" name="username" class="login-input" placeholder="Identity" required autocomplete="off" />
+            <input type="password" name="password" class="login-input" placeholder="Passkey" required />
+            <button type="submit" class="btn-primary" style="width: 100%; margin-top: 1rem;">Initialize Session</button>
+        </form>
+    </div>
+</body>
+</html>

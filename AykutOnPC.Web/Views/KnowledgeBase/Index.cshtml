@@ -1,0 +1,37 @@
+@model IEnumerable<AykutOnPC.Core.Entities.KnowledgeEntry>
+
+@{
+    ViewData["Title"] = "Knowledge Base";
+    Layout = "_AdminLayout";
+}
+
+<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
+    <h1>AI Knowledge Base</h1>
+    <a asp-action="Create" class="btn-primary"><i class="fa-solid fa-plus"></i> Add New Entry</a>
+</div>
+
+<div class="grid" style="grid-template-columns: 1fr;">
+    @foreach (var item in Model)
+    {
+        <div class="card" style="height: auto; max-height: none; flex-direction: row; align-items: center; justify-content: space-between;">
+            <div>
+                <h3 style="margin-bottom: 0.5rem; color: var(--secondary);">@item.Topic</h3>
+                <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 0.5rem;">
+                    @if(item.Content.Length > 100)
+                    {
+                        @item.Content.Substring(0, 100) <text>...</text>
+                    }
+                    else
+                    {
+                        @item.Content
+                    }
+                </p>
+                <small style="color: #666;">Keywords: @item.Keywords</small>
+            </div>
+            <div style="display: flex; gap: 1rem;">
+                <a asp-action="Edit" asp-route-id="@item.Id" style="color: var(--primary);"><i class="fa-solid fa-pen"></i></a>
+                <a asp-action="Delete" asp-route-id="@item.Id" style="color: #ef4444;" onclick="return confirm('Are you sure?')"><i class="fa-solid fa-trash"></i></a>
+            </div>
+        </div>
+    }
+</div>

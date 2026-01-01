@@ -1,0 +1,33 @@
+@model AykutOnPC.Core.Entities.KnowledgeEntry
+
+@{
+    ViewData["Title"] = "Edit Knowledge";
+    Layout = "_AdminLayout";
+}
+
+<h1 style="margin-bottom: 2rem;">Edit Knowledge</h1>
+
+<div class="card" style="height: auto; max-height: none;">
+    <form asp-action="Edit">
+        <input type="hidden" asp-for="Id" />
+        <div style="margin-bottom: 1.5rem;">
+            <label style="display: block; margin-bottom: 0.5rem; color: var(--secondary);">Topic</label>
+            <input asp-for="Topic" class="form-control" style="width: 100%; padding: 0.8rem; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color: white; border-radius: 8px;" required />
+        </div>
+
+        <div style="margin-bottom: 1.5rem;">
+            <label style="display: block; margin-bottom: 0.5rem; color: var(--secondary);">Content</label>
+            <textarea asp-for="Content" rows="5" class="form-control" style="width: 100%; padding: 0.8rem; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color: white; border-radius: 8px;" required></textarea>
+        </div>
+
+        <div style="margin-bottom: 2rem;">
+            <label style="display: block; margin-bottom: 0.5rem; color: var(--secondary);">Keywords</label>
+            <input asp-for="Keywords" class="form-control" style="width: 100%; padding: 0.8rem; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color: white; border-radius: 8px;" />
+        </div>
+
+        <div style="display: flex; gap: 1rem;">
+            <button type="submit" class="btn-primary">Update Knowledge</button>
+            <a asp-action="Index" style="padding: 1rem 2rem; color: var(--text-muted); text-decoration: none;">Cancel</a>
+        </div>
+    </form>
+</div>
