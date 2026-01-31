@@ -5,10 +5,10 @@
 
 <div class="hero">
     <h1>
-        @(Model.SiteSettings.ContainsKey("HeroTitle") ? Html.Raw(Model.SiteSettings["HeroTitle"]) : Html.Raw("Building the Future with <br /> <span style=\"color: var(--secondary)\">.NET & Intelligence</span>"))
+        @Html.Raw(Model.HeroTitle)
     </h1>
     <p>
-        @(Model.SiteSettings.ContainsKey("HeroSubtitle") ? Model.SiteSettings["HeroSubtitle"] : "Welcome to my digital workspace. I architect robust backends and integrate AI solutions to solve real-world problems.")
+        @Model.HeroSubtitle
     </p>
     <a href="#contact" class="btn-primary">Start Collaborating</a>
 </div>

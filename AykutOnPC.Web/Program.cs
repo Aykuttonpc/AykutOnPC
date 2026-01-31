@@ -62,8 +62,11 @@ using (var scope = app.Services.CreateScope())
 {
     var services = scope.ServiceProvider;
     var context = services.GetRequiredService<AykutOnPC.Infrastructure.Data.AppDbContext>();
-    // Apply migrations automatically at startup
+    var config = services.GetRequiredService<IConfiguration>();
+    
+    // Auto-migrate and Seed
     context.Database.Migrate();
+    AykutOnPC.Infrastructure.Data.DbInitializer.Initialize(context, config);
 }
 
 app.UseHttpsRedirection();

@@ -24,13 +24,10 @@ public class HomeController : Controller
 
     public async Task<IActionResult> Index()
     {
-        // 1. Fetch Site Settings
-        var settings = await _context.SiteSettings.ToDictionaryAsync(s => s.Key, s => s.Value);
-        
-        // Fetch fallback from Config if DB is empty
-        string ghUsername = settings.ContainsKey("GitHubUsername") 
-            ? settings["GitHubUsername"] 
-            : _configuration["SeedData:GitHubUsername"] ?? string.Empty;
+        // 1. Fetch Configuration
+        string ghUsername = _configuration["SeedData:GitHubUsername"] ?? "Aykuttonpc";
+        string title = _configuration["SeedData:HeroTitle"] ?? "Hello";
+        string subtitle = _configuration["SeedData:HeroSubtitle"] ?? "Developer";
 
         // 2. Fetch Projects using dynamic username
         var allGitHubBuilds = await _gitHubService.GetRepositoriesAsync(ghUsername); 
@@ -39,7 +36,11 @@ public class HomeController : Controller
         {
             RecentBuilds = allGitHubBuilds,
             TopSpecs = await _context.Specs.OrderByDescending(s => s.Proficiency).Take(5).ToListAsync(),
-            SiteSettings = settings // Pass all settings to view
+            
+            // Static Config Mapped to ViewModel
+            GitHubUsername = ghUsername,
+            HeroTitle = title,
+            HeroSubtitle = subtitle
         };
         
         return View(viewModel);

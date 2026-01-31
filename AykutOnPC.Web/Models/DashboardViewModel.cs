@@ -11,6 +11,8 @@ public class DashboardViewModel
     public int CurrentPage { get; set; }
     public int TotalPages { get; set; }
 
-    // Dynamic Settings
-    public Dictionary<string, string> SiteSettings { get; set; } = new();
+    // Configuration
+    public string HeroTitle { get; set; } = string.Empty;
+    public string HeroSubtitle { get; set; } = string.Empty;
+    public string GitHubUsername { get; set; } = string.Empty;
 }

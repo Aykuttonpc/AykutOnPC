@@ -25,9 +25,8 @@ public class GeminiService : IAIService
     {
         if (!string.IsNullOrEmpty(_cachedApiUrl)) return _cachedApiUrl;
 
-        // Fetch Key from DB or Config
-        var dbSetting = await _context.SiteSettings.FirstOrDefaultAsync(s => s.Key == "GeminiApiKey");
-        var currentKey = dbSetting?.Value ?? _apiKey;
+        // Fetch Key from Config
+        var currentKey = _apiKey;
 
         if (string.IsNullOrEmpty(currentKey) || currentKey.StartsWith("BURAYA")) 
             throw new Exception("Gemini API Key is missing in Database (SiteSettings) and appsettings.json");
@@ -114,8 +113,7 @@ public class GeminiService : IAIService
 
         try 
         {
-            var dbSetting = await _context.SiteSettings.FirstOrDefaultAsync(s => s.Key == "GeminiApiKey");
-            var currentKey = dbSetting?.Value ?? _apiKey;
+            var currentKey = _apiKey;
 
             var response = await _httpClient.PostAsync($"{apiUrl}?key={currentKey}", content);
             

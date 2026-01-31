@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
 using AykutOnPC.Infrastructure.Data;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using System.IdentityModel.Tokens.Jwt;
 using System.Text;
@@ -28,9 +29,9 @@ public class AccountController : Controller
     [HttpPost]
     public async Task<IActionResult> Login(string username, string password)
     {
-        var user = _context.Users.FirstOrDefault(u => u.Username == username && u.Password == password);
-
-        if (user != null) 
+        var user = await _context.Users.SingleOrDefaultAsync(u => u.Username == username);
+        
+        if (user != null && AykutOnPC.Infrastructure.Data.DbInitializer.VerifyPassword(password, user.PasswordHash)) 
         {
             var claims = new List<Claim>
             {

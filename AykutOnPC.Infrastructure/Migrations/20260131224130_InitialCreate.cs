@@ -17,7 +17,7 @@ namespace AykutOnPC.Infrastructure.Migrations
                 {
                     Id = table.Column<int>(type: "int", nullable: false)
                         .Annotation("SqlServer:Identity", "1, 1"),
-                    Title = table.Column<string>(type: "nvarchar(200)", maxLength: 200, nullable: false),
+                    Title = table.Column<string>(type: "nvarchar(max)", nullable: false),
                     Description = table.Column<string>(type: "nvarchar(max)", nullable: false),
                     TechStack = table.Column<string>(type: "nvarchar(max)", nullable: false),
                     RepoUrl = table.Column<string>(type: "nvarchar(max)", nullable: true),
@@ -47,6 +47,21 @@ namespace AykutOnPC.Infrastructure.Migrations
                 });
 
             migrationBuilder.CreateTable(
+                name: "SiteSettings",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    Key = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    Value = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    Description = table.Column<string>(type: "nvarchar(max)", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_SiteSettings", x => x.Id);
+                });
+
+            migrationBuilder.CreateTable(
                 name: "Specs",
                 columns: table => new
                 {
@@ -61,6 +76,20 @@ namespace AykutOnPC.Infrastructure.Migrations
                 {
                     table.PrimaryKey("PK_Specs", x => x.Id);
                 });
+
+            migrationBuilder.CreateTable(
+                name: "Users",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    Username = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    PasswordHash = table.Column<string>(type: "nvarchar(max)", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_Users", x => x.Id);
+                });
         }
 
         /// <inheritdoc />
@@ -73,7 +102,13 @@ namespace AykutOnPC.Infrastructure.Migrations
                 name: "KnowledgeEntries");
 
             migrationBuilder.DropTable(
+                name: "SiteSettings");
+
+            migrationBuilder.DropTable(
                 name: "Specs");
+
+            migrationBuilder.DropTable(
+                name: "Users");
         }
     }
 }

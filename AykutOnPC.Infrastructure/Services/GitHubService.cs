@@ -18,7 +18,7 @@ public class GitHubService(HttpClient httpClient) : IGitHubService
             if (repos == null) return Enumerable.Empty<Build>();
 
             return repos.Select(r => new Build(
-                r.Name, 
+                r.Name ?? "Unnamed", 
                 r.Description ?? "No description available.", 
                 r.Language ?? "Unknown")
             {
@@ -38,7 +38,7 @@ public class GitHubService(HttpClient httpClient) : IGitHubService
     private class GitHubRepoDto
     {
         [System.Text.Json.Serialization.JsonPropertyName("name")]
-        public string Name { get; set; }
+        public string? Name { get; set; }
 
         [System.Text.Json.Serialization.JsonPropertyName("description")]
         public string? Description { get; set; }
@@ -47,7 +47,7 @@ public class GitHubService(HttpClient httpClient) : IGitHubService
         public string? Language { get; set; }
 
         [System.Text.Json.Serialization.JsonPropertyName("html_url")]
-        public string HtmlUrl { get; set; }
+        public string? HtmlUrl { get; set; }
 
         [System.Text.Json.Serialization.JsonPropertyName("homepage")]
         public string? Homepage { get; set; }

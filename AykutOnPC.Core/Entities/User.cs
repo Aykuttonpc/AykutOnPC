@@ -10,5 +10,5 @@ public class User
     public string Username { get; set; } = string.Empty;
     
     [Required]
-    public string Password { get; set; } = string.Empty; // In real world this should be hashed
+    public string PasswordHash { get; set; } = string.Empty;
 }
