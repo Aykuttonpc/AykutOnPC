@@ -29,10 +29,19 @@
                 for (int i = 0; i < builds.Count; i++)
                 {
                     var build = builds[i];
-                    <div class="card build-item" data-index="@i" style="@(i >= 6 ? "display: none;" : "")">
-                        <h3>@build.Title</h3>
-                        <p>@build.Description</p>
-                            <div style="margin-top: 1rem; display: flex; gap: 0.5rem; flex-wrap: wrap;">
+                    <a href="@build.RepoUrl" target="_blank" class="card build-item" 
+                       style="text-decoration: none; cursor: pointer; transition: transform 0.2s; @(i >= 6 ? "display: none;" : "")">
+                        
+                        <div style="display: flex; justify-content: space-between; align-items: start;">
+                            <h3>@build.Title</h3>
+                            <i class="fa-brands fa-github" style="opacity: 0.5;"></i>
+                        </div>
+                        
+                        <p style="display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden;">
+                            @build.Description
+                        </p>
+
+                        <div style="margin-top: 1rem; display: flex; gap: 0.5rem; flex-wrap: wrap;">
                             @foreach(var tech in build.TechStack.Split(','))
                             {
                                 <span style="background: rgba(255,255,255,0.1); padding: 4px 8px; border-radius: 4px; font-size: 0.8rem; color: var(--secondary);">
@@ -40,7 +49,7 @@
                                 </span>
                             }
                         </div>
-                    </div>
+                    </a>
                 }
             }
         </div>
