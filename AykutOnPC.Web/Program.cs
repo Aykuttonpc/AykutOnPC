@@ -1,8 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using AykutOnPC.Infrastructure.Data;
-using Microsoft.AspNetCore.Authentication.JwtBearer;
-using Microsoft.IdentityModel.Tokens;
 using System.Text;
+using AykutOnPC.Web.Extensions;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -16,36 +15,8 @@ builder.Services.AddHttpClient<AykutOnPC.Core.Interfaces.IGitHubService, AykutOn
 builder.Services.AddHttpClient<AykutOnPC.Infrastructure.Services.GeminiService>();
 builder.Services.AddScoped<AykutOnPC.Core.Interfaces.IAIService, AykutOnPC.Infrastructure.Services.GeminiService>();
 
-builder.Services.AddAuthentication(options =>
-{
-    options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
-    options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
-})
-.AddJwtBearer(options =>
-{
-    var jwtSettings = builder.Configuration.GetSection("JwtSettings");
-    var key = Encoding.UTF8.GetBytes(jwtSettings["Key"]!);
-
-    options.TokenValidationParameters = new TokenValidationParameters
-    {
-        ValidateIssuer = true,
-        ValidateAudience = true,
-        ValidateLifetime = true,
-        ValidateIssuerSigningKey = true,
-        ValidIssuer = jwtSettings["Issuer"],
-        ValidAudience = jwtSettings["Audience"],
-        IssuerSigningKey = new SymmetricSecurityKey(key)
-    };
-    
-    options.Events = new JwtBearerEvents
-    {
-        OnMessageReceived = context =>
-        {
-            context.Token = context.Request.Cookies["AykutOnPC.AuthToken"];
-            return Task.CompletedTask;
-        }
-    };
-});
+// Custom Auth Extension
+builder.Services.AddJwtAuthentication(builder.Configuration);
 
 var app = builder.Build();
 
