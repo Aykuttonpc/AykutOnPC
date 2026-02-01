@@ -8,6 +8,7 @@
 
 <div class="card" style="max-width: 800px; height: auto; max-height: none; overflow: visible;">
     <form asp-action="Create" method="post">
+        <div asp-validation-summary="All" style="color: #ef4444; margin-bottom: 1rem;"></div>
         <div style="display: flex; flex-direction: column; gap: 1.5rem;">
             <div>
                 <label style="display: block; margin-bottom: 0.5rem; color: var(--text-muted);">Position / Job Title *</label>
@@ -36,9 +37,9 @@
             </div>
 
             <div>
-                <label style="display: block; margin-bottom: 0.5rem; color: var(--text-muted);">Description *</label>
+                <label style="display: block; margin-bottom: 0.5rem; color: var(--text-muted);">Description</label>
                 <textarea asp-for="Description" class="form-control" rows="5" 
-                          placeholder="Describe your role, responsibilities, and achievements..." required></textarea>
+                          placeholder="Describe your role, responsibilities, and achievements..."></textarea>
             </div>
 
             <div style="display: flex; gap: 1rem; margin-top: 1rem;">

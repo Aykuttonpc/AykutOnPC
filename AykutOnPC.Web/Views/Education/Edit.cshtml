@@ -1,10 +1,10 @@
-@model AykutOnPC.Core.Entities.Experience
+@model AykutOnPC.Core.Entities.Education
 @{
-    ViewData["Title"] = "Edit Experience";
+    ViewData["Title"] = "Edit Education";
     Layout = "_AdminLayout";
 }
 
-<h1 style="margin-bottom: 2rem;">Edit Work Experience</h1>
+<h1 style="margin-bottom: 2rem;">Edit Education</h1>
 
 <div class="card" style="max-width: 800px; height: auto; max-height: none; overflow: visible;">
     <form asp-action="Edit" method="post">
@@ -12,18 +12,18 @@
         <div asp-validation-summary="All" style="color: #ef4444; margin-bottom: 1rem;"></div>
         <div style="display: flex; flex-direction: column; gap: 1.5rem;">
             <div>
-                <label style="display: block; margin-bottom: 0.5rem; color: var(--text-muted);">Position / Job Title *</label>
-                <input asp-for="Position" class="form-control" required />
+                <label style="display: block; margin-bottom: 0.5rem; color: var(--text-muted);">Institution / School *</label>
+                <input asp-for="Institution" class="form-control" required />
             </div>
 
             <div>
-                <label style="display: block; margin-bottom: 0.5rem; color: var(--text-muted);">Company *</label>
-                <input asp-for="Company" class="form-control" required />
+                <label style="display: block; margin-bottom: 0.5rem; color: var(--text-muted);">Degree *</label>
+                <input asp-for="Degree" class="form-control" required />
             </div>
 
             <div>
-                <label style="display: block; margin-bottom: 0.5rem; color: var(--text-muted);">Company Website (Optional)</label>
-                <input asp-for="CompanyUrl" class="form-control" type="url" />
+                <label style="display: block; margin-bottom: 0.5rem; color: var(--text-muted);">Field of Study</label>
+                <input asp-for="FieldOfStudy" class="form-control" />
             </div>
 
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
@@ -38,13 +38,18 @@
             </div>
 
             <div>
-                <label style="display: block; margin-bottom: 0.5rem; color: var(--text-muted);">Description</label>
-                <textarea asp-for="Description" class="form-control" rows="5"></textarea>
+                <label style="display: block; margin-bottom: 0.5rem; color: var(--text-muted);">Grade / GPA (Optional)</label>
+                <input asp-for="Grade" class="form-control" />
+            </div>
+
+            <div>
+                <label style="display: block; margin-bottom: 0.5rem; color: var(--text-muted);">Description (Optional)</label>
+                <textarea asp-for="Description" class="form-control" rows="3"></textarea>
             </div>
 
             <div style="display: flex; gap: 1rem; margin-top: 1rem;">
                 <button type="submit" class="btn-primary">
-                    <i class="fa-solid fa-save"></i> Update Experience
+                    <i class="fa-solid fa-save"></i> Update Education
                 </button>
                 <a asp-action="Index" class="btn-primary" style="background: rgba(255,255,255,0.05);">
                     Cancel

@@ -34,12 +34,16 @@ public class HomeController : Controller
         
         var specs = await _context.Specs.OrderByDescending(s => s.Proficiency).Take(8).ToListAsync();
         var experiences = await _context.Experiences.OrderByDescending(e => e.StartDate).ToListAsync();
+        var educations = await _context.Educations.OrderByDescending(e => e.StartDate).ToListAsync();
+        var profile = await _context.Profiles.FirstOrDefaultAsync() ?? new AykutOnPC.Core.Entities.Profile();
 
         var viewModel = new DashboardViewModel
         {
             RecentBuilds = allGitHubBuilds,
             TopSpecs = specs,
             Experiences = experiences,
+            Educations = educations,
+            UserProfile = profile,
             
             // Static Config Mapped to ViewModel
             GitHubUsername = ghUsername,

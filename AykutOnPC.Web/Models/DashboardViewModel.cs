@@ -7,6 +7,8 @@ public class DashboardViewModel
     public IEnumerable<Build> RecentBuilds { get; set; } = new List<Build>();
     public IEnumerable<Spec> TopSpecs { get; set; } = new List<Spec>();
     public IEnumerable<Experience> Experiences { get; set; } = new List<Experience>();
+    public IEnumerable<Education> Educations { get; set; } = new List<Education>();
+    public AykutOnPC.Core.Entities.Profile UserProfile { get; set; } = new AykutOnPC.Core.Entities.Profile();
     
     // Pagination
     public int CurrentPage { get; set; }

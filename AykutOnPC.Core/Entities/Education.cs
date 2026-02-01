@@ -2,15 +2,17 @@ using System.ComponentModel.DataAnnotations;
 
 namespace AykutOnPC.Core.Entities;
 
-public class Experience
+public class Education
 {
     public int Id { get; set; }
 
     [Required]
-    public string Company { get; set; } = string.Empty;
+    public string Institution { get; set; } = string.Empty;
 
     [Required]
-    public string Position { get; set; } = string.Empty;
+    public string Degree { get; set; } = string.Empty;
+
+    public string? FieldOfStudy { get; set; }
 
     public DateTime StartDate { get; set; }
     
@@ -18,5 +20,5 @@ public class Experience
 
     public string? Description { get; set; }
 
-    public string? CompanyUrl { get; set; }
+    public string? Grade { get; set; }
 }
