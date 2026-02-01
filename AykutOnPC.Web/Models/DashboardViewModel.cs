@@ -6,6 +6,7 @@ public class DashboardViewModel
 {
     public IEnumerable<Build> RecentBuilds { get; set; } = new List<Build>();
     public IEnumerable<Spec> TopSpecs { get; set; } = new List<Spec>();
+    public IEnumerable<Experience> Experiences { get; set; } = new List<Experience>();
     
     // Pagination
     public int CurrentPage { get; set; }

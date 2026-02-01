@@ -32,10 +32,14 @@ public class HomeController : Controller
         // 2. Fetch Projects using dynamic username
         var allGitHubBuilds = await _gitHubService.GetRepositoriesAsync(ghUsername); 
         
+        var specs = await _context.Specs.OrderByDescending(s => s.Proficiency).Take(8).ToListAsync();
+        var experiences = await _context.Experiences.OrderByDescending(e => e.StartDate).ToListAsync();
+
         var viewModel = new DashboardViewModel
         {
             RecentBuilds = allGitHubBuilds,
-            TopSpecs = await _context.Specs.OrderByDescending(s => s.Proficiency).Take(5).ToListAsync(),
+            TopSpecs = specs,
+            Experiences = experiences,
             
             // Static Config Mapped to ViewModel
             GitHubUsername = ghUsername,
