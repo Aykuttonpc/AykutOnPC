@@ -1,30 +1,59 @@
-using Microsoft.EntityFrameworkCore;
+using AykutOnPC.Core.Configuration;
 using AykutOnPC.Infrastructure.Data;
-using System.Text;
 using AykutOnPC.Web.Extensions;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Add services to the container.
+// ──────────────────────────────────────────────
+// 1. Configuration (strongly-typed)
+// ──────────────────────────────────────────────
+builder.Services.AddAppConfiguration(builder.Configuration);
+
+// ──────────────────────────────────────────────
+// 2. Database
+// ──────────────────────────────────────────────
+builder.Services.AddDatabase(builder.Configuration);
+
+// ──────────────────────────────────────────────
+// 3. Caching
+// ──────────────────────────────────────────────
+builder.Services.AddMemoryCache();
+
+// ──────────────────────────────────────────────
+// 4. Authentication & Authorization
+// ──────────────────────────────────────────────
+builder.Services.AddJwtAuthentication(builder.Configuration);
+builder.Services.AddAuthorization();
+
+// ──────────────────────────────────────────────
+// 5. Application Services (DI)
+// ──────────────────────────────────────────────
+builder.Services.AddApplicationServices();
+
+// ──────────────────────────────────────────────
+// 6. MVC + API
+// ──────────────────────────────────────────────
 builder.Services.AddControllersWithViews();
 
-builder.Services.AddDbContext<AykutOnPC.Infrastructure.Data.AppDbContext>(options =>
-    options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
-
-builder.Services.AddHttpClient<AykutOnPC.Core.Interfaces.IGitHubService, AykutOnPC.Infrastructure.Services.GitHubService>();
-builder.Services.AddHttpClient<AykutOnPC.Infrastructure.Services.GeminiService>();
-builder.Services.AddScoped<AykutOnPC.Core.Interfaces.IAIService, AykutOnPC.Infrastructure.Services.GeminiService>();
-
-// Custom Auth Extension
-builder.Services.AddJwtAuthentication(builder.Configuration);
+// ──────────────────────────────────────────────
+// 7. Cross-cutting concerns
+// ──────────────────────────────────────────────
+builder.Services.AddAppCors(builder.Configuration);
+builder.Services.AddAppRateLimiting();
+builder.Services.AddAppExceptionHandling();
+builder.Services.AddAppHealthChecks();
 
 var app = builder.Build();
 
-// Configure the HTTP request pipeline.
+// ──────────────────────────────────────────────
+// Middleware Pipeline
+// ──────────────────────────────────────────────
+app.UseExceptionHandler("/Home/Error");
+
 if (!app.Environment.IsDevelopment())
 {
-    app.UseExceptionHandler("/Home/Error");
-    // The default HSTS value is 30 days. You may want to change this for production scenarios, see https://aka.ms/aspnetcore-hsts.
     app.UseHsts();
 }
 
@@ -32,16 +61,23 @@ if (!app.Environment.IsDevelopment())
 using (var scope = app.Services.CreateScope())
 {
     var services = scope.ServiceProvider;
-    var context = services.GetRequiredService<AykutOnPC.Infrastructure.Data.AppDbContext>();
-    var config = services.GetRequiredService<IConfiguration>();
-    
-    // Auto-migrate and Seed
+    var context = services.GetRequiredService<AppDbContext>();
+    var seedOptions = services.GetRequiredService<IOptions<SeedDataSettings>>();
+    var logger = services.GetRequiredService<ILoggerFactory>().CreateLogger("DbInitializer");
+
+    // Only Migrate - do NOT call EnsureCreated
     context.Database.Migrate();
-    AykutOnPC.Infrastructure.Data.DbInitializer.Initialize(context, config);
+    DbInitializer.Initialize(context, seedOptions, logger);
+
+    // One-time migration from SHA256 to BCrypt (safe to run multiple times)
+    DbInitializer.MigratePasswordHashes(context, logger);
 }
 
 app.UseHttpsRedirection();
 app.UseRouting();
+
+app.UseCors("DefaultPolicy");
+app.UseRateLimiter();
 
 app.UseAuthentication();
 app.UseAuthorization();
@@ -53,5 +89,9 @@ app.MapControllerRoute(
     pattern: "{controller=Home}/{action=Index}/{id?}")
     .WithStaticAssets();
 
+// Rate limit the Chat API endpoint
+app.MapControllers().RequireRateLimiting("GeneralApiPolicy");
+
+app.MapHealthChecks("/health");
 
 app.Run();

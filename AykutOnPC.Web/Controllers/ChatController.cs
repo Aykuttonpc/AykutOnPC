@@ -1,34 +1,22 @@
+using AykutOnPC.Core.DTOs;
 using AykutOnPC.Core.Interfaces;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 
 namespace AykutOnPC.Web.Controllers;
 
 [Route("api/[controller]")]
 [ApiController]
-public class ChatController : ControllerBase
+[EnableRateLimiting("ChatApiPolicy")]
+public class ChatController(IAIService aiService) : ControllerBase
 {
-    private readonly IAIService _aiService;
-
-    public ChatController(IAIService aiService)
-    {
-        _aiService = aiService;
-    }
-
     [HttpPost("ask")]
-    public async Task<IActionResult> Ask([FromBody] ChatRequest request)
+    public async Task<IActionResult> Ask([FromBody] ChatRequestDto request, CancellationToken cancellationToken)
     {
-        if (string.IsNullOrWhiteSpace(request.Message))
-            return BadRequest("Message cannot be empty");
+        if (!ModelState.IsValid)
+            return BadRequest(ModelState);
 
-        // Artificial delay for realism
-        await Task.Delay(500);
-
-        var answer = await _aiService.GetAnswerAsync(request.Message);
+        var answer = await aiService.GetAnswerAsync(request.Message, cancellationToken);
         return Ok(new { response = answer });
     }
-}
-
-public class ChatRequest
-{
-    public string? Message { get; set; }
 }

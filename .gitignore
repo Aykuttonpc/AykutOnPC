@@ -45,8 +45,12 @@ migrated.config
 # Application-level configuration
 appsettings.Development.json
 appsettings.Production.json
+appsettings.Staging.json
 # Be careful with appsettings.json if it contains secrets!
 # appsettings.json 
+
+# User Secrets
+secrets.json
 
 # Misc
 *.log
@@ -55,3 +59,12 @@ appsettings.Production.json
 *.~*
 thumbs.db
 .DS_Store
+.env
+
+# Build artifacts and logs
+build_error_log.txt
+build_error.log
+build_log.txt
+build_warnings.log
+pkg_log.txt
+mcp-cursor-executed.txt

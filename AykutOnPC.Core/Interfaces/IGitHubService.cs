@@ -4,5 +4,5 @@ namespace AykutOnPC.Core.Interfaces;
 
 public interface IGitHubService
 {
-    Task<IEnumerable<Build>> GetRepositoriesAsync(string username);
+    Task<IEnumerable<Build>> GetRepositoriesAsync(string username, CancellationToken cancellationToken = default);
 }

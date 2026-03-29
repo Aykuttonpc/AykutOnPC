@@ -442,3 +442,220 @@ body {
 #ai-send-btn:hover {
     transform: scale(1.1);
 }
+
+/* =========================================================
+   CYBERPUNK & DYNAMIC UI UPGRADES (NEW)
+   ========================================================= */
+
+/* Hero Glitch Effect */
+.glitch {
+    position: relative;
+    color: white;
+    font-size: 3.5rem;
+    font-weight: 800;
+    line-height: 1.1;
+    z-index: 10;
+}
+
+.glitch::before,
+.glitch::after {
+    content: attr(data-text);
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    opacity: 0.8;
+}
+
+.glitch::before {
+    left: 4px;
+    text-shadow: -2px 0 var(--primary);
+    clip: rect(44px, 450px, 56px, 0);
+    animation: glitch-anim 5s infinite linear alternate-reverse;
+}
+
+.glitch::after {
+    left: -4px;
+    text-shadow: -2px 0 var(--secondary);
+    clip: rect(44px, 450px, 56px, 0);
+    animation: glitch-anim2 5s infinite linear alternate-reverse;
+}
+
+@keyframes glitch-anim {
+    0% { clip: rect(10px, 9999px, 83px, 0); }
+    5% { clip: rect(31px, 9999px, 20px, 0); }
+    10% { clip: rect(12px, 9999px, 60px, 0); }
+    15% { clip: rect(74px, 9999px, 81px, 0); }
+    20% { clip: rect(11px, 9999px, 65px, 0); }
+    25% { clip: rect(3px, 9999px, 34px, 0); transform: translate(3px, 0); }
+    30% { clip: rect(25px, 9999px, 50px, 0); }
+    35% { clip: rect(40px, 9999px, 40px, 0); transform: translate(-3px, 0); }
+    40% { clip: rect(15px, 9999px, 2px, 0); }
+    45% { clip: rect(50px, 9999px, 23px, 0); }
+    50% { clip: rect(5px, 9999px, 60px, 0); }
+    55% { clip: rect(98px, 9999px, 45px, 0); }
+    60% { clip: rect(23px, 9999px, 12px, 0); }
+    65% { clip: rect(34px, 9999px, 89px, 0); }
+    70% { clip: rect(1px, 9999px, 28px, 0); transform: translate(3px, 0); }
+    75% { clip: rect(42px, 9999px, 11px, 0); }
+    80% { clip: rect(89px, 9999px, 98px, 0); transform: translate(-3px, 0); }
+    85% { clip: rect(5px, 9999px, 34px, 0); }
+    90% { clip: rect(67px, 9999px, 11px, 0); }
+    95% { clip: rect(23px, 9999px, 34px, 0); }
+    100% { clip: rect(2px, 9999px, 50px, 0); }
+}
+
+@keyframes glitch-anim2 {
+    0% { clip: rect(50px, 9999px, 12px, 0); }
+    5% { clip: rect(11px, 9999px, 45px, 0); }
+    10% { clip: rect(23px, 9999px, 23px, 0); }
+    15% { clip: rect(83px, 9999px, 98px, 0); transform: translate(-4px, 0); }
+    20% { clip: rect(4px, 9999px, 12px, 0); }
+    25% { clip: rect(15px, 9999px, 50px, 0); transform: translate(4px, 0); }
+    30% { clip: rect(89px, 9999px, 34px, 0); }
+    35% { clip: rect(12px, 9999px, 2px, 0); }
+    40% { clip: rect(34px, 9999px, 89px, 0); transform: translate(-4px, 0); }
+    45% { clip: rect(5px, 9999px, 45px, 0); transform: translate(4px, 0); }
+    50% { clip: rect(60px, 9999px, 1px, 0); }
+    55% { clip: rect(2px, 9999px, 15px, 0); }
+    60% { clip: rect(45px, 9999px, 50px, 0); }
+    65% { clip: rect(12px, 9999px, 23px, 0); }
+    70% { clip: rect(34px, 9999px, 83px, 0); }
+    75% { clip: rect(11px, 9999px, 12px, 0); transform: translate(-4px, 0); }
+    80% { clip: rect(98px, 9999px, 45px, 0); transform: translate(4px, 0); }
+    85% { clip: rect(23px, 9999px, 34px, 0); }
+    90% { clip: rect(50px, 9999px, 89px, 0); }
+    95% { clip: rect(1px, 9999px, 12px, 0); }
+    100% { clip: rect(89px, 9999px, 45px, 0); }
+}
+
+/* Enhancing Buttons for Cyber Feel */
+.btn-primary.cyber-btn {
+    border-radius: 0;
+    border: 1px solid var(--secondary);
+    background: transparent;
+    color: var(--secondary);
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    position: relative;
+    overflow: hidden;
+    transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+    box-shadow: 0 0 10px rgba(6, 182, 212, 0.2), inset 0 0 10px rgba(6, 182, 212, 0.2);
+}
+
+.btn-primary.cyber-btn:hover {
+    background: var(--secondary);
+    color: var(--bg-dark);
+    box-shadow: 0 0 20px rgba(6, 182, 212, 0.6), inset 0 0 20px rgba(6, 182, 212, 0.6);
+    transform: translateY(-2px);
+}
+
+.btn-primary.cyber-btn:active {
+    transform: scale(0.95);
+}
+
+/* Card 3D Enhancements */
+.card {
+    background: rgba(22, 22, 22, 0.8) !important;
+    backdrop-filter: blur(5px) !important;
+    border: 1px solid rgba(109, 40, 217, 0.3) !important;
+    box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1) !important;
+    /* Setup for vanilla-tilt */
+    transform-style: preserve-3d;
+}
+
+.card:hover {
+    border-color: rgba(6, 182, 212, 0.8) !important;
+    box-shadow: 0 0 25px rgba(6, 182, 212, 0.2) !important;
+}
+
+/* Content inside card pops out in 3D */
+.card > * {
+    transform: translateZ(30px);
+}
+
+/* Particles Background Canvas */
+#particles-js {
+    position: fixed;
+    width: 100vw;
+    height: 100vh;
+    top: 0;
+    left: 0;
+    z-index: -1;
+    background: var(--bg-dark);
+}
+
+/* Make body transparent so particles show */
+body {
+    background-color: transparent !important;
+}
+
+
+
+/* =========================================================
+   EXTRA MOVEMENT & ANIMATIONS (NEW)
+   ========================================================= */
+
+/* Custom Cyber Scrollbar */
+::-webkit-scrollbar {
+    width: 6px;
+}
+::-webkit-scrollbar-track {
+    background: var(--bg-dark);
+}
+::-webkit-scrollbar-thumb {
+    background: var(--secondary);
+    border-radius: 10px;
+    box-shadow: 0 0 10px rgba(6, 182, 212, 0.8);
+}
+::-webkit-scrollbar-thumb:hover {
+    background: var(--primary-glow);
+    box-shadow: 0 0 10px rgba(139, 92, 246, 0.8);
+}
+
+/* Floating Animation for Avatar */
+@keyframes floatY {
+    0% { transform: translateY(0px) rotate(0deg); box-shadow: 0 0 20px rgba(109, 40, 217, 0.3); }
+    50% { transform: translateY(-15px) rotate(3deg); box-shadow: 0 0 40px rgba(6, 182, 212, 0.7); }
+    100% { transform: translateY(0px) rotate(0deg); box-shadow: 0 0 20px rgba(109, 40, 217, 0.3); }
+}
+
+.floating-avatar {
+    animation: floatY 4s ease-in-out infinite;
+    display: inline-block;
+}
+
+/* Typing Effect */
+@keyframes blink-caret {
+    from, to { border-color: transparent }
+    50% { border-color: var(--secondary); }
+}
+
+.typing-effect {
+    overflow: hidden; 
+    border-right: .15em solid var(--secondary); 
+    white-space: nowrap; 
+    margin: 0 auto; 
+    letter-spacing: .05em; 
+    animation: typing 3.5s steps(40, end), blink-caret .75s step-end infinite;
+    display: inline-block;
+    max-width: fit-content;
+}
+
+@keyframes typing {
+    from { width: 0 }
+    to { width: 100% }
+}
+
+/* Social icons pulsate */
+@keyframes pulsate {
+    0% { transform: scale(1); filter: drop-shadow(0 0 5px rgba(6, 182, 212, 0.3)); }
+    50% { transform: scale(1.1); filter: drop-shadow(0 0 15px rgba(6, 182, 212, 0.9)); }
+    100% { transform: scale(1); filter: drop-shadow(0 0 5px rgba(6, 182, 212, 0.3)); }
+}
+
+.social-link:hover {
+    animation: pulsate 1s infinite alternate;
+}
+

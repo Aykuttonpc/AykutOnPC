@@ -1,45 +1,43 @@
+using AykutOnPC.Core.DTOs;
 using AykutOnPC.Core.Entities;
-using AykutOnPC.Infrastructure.Data;
+using AykutOnPC.Core.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
 
 namespace AykutOnPC.Web.Controllers;
 
 [Authorize(Roles = "Admin")]
-public class ProfileController : Controller
+public class ProfileController(IProfileService profileService) : Controller
 {
-    private readonly AppDbContext _context;
-
-    public ProfileController(AppDbContext context)
+    public async Task<IActionResult> Index(CancellationToken cancellationToken)
     {
-        _context = context;
-    }
-
-    public async Task<IActionResult> Index()
-    {
-        var profile = await _context.Profiles.AsNoTracking().FirstOrDefaultAsync();
-        if (profile == null)
-        {
-            profile = new Profile { FullName = "Aykut" };
-            _context.Profiles.Add(profile);
-            await _context.SaveChangesAsync();
-        }
+        var profile = await profileService.GetOrCreateProfileAsync(cancellationToken);
         return View(profile);
     }
 
     [HttpPost]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> Update(Profile profile)
+    public async Task<IActionResult> Update(UpdateProfileDto dto, CancellationToken cancellationToken)
     {
-        if (ModelState.IsValid)
+        if (!ModelState.IsValid)
+            return View("Index", dto);
+
+        var profile = new Profile
         {
-            _context.Update(profile);
-            await _context.SaveChangesAsync();
-            TempData["Success"] = "Profil başarıyla güncellendi!";
-            return RedirectToAction(nameof(Index));
-        }
-        
-        return View("Index", profile);
+            Id = dto.Id,
+            FullName = dto.FullName,
+            Title = dto.Title,
+            Bio = dto.Bio,
+            ProfilePictureUrl = dto.ProfilePictureUrl,
+            GitHubUrl = dto.GitHubUrl,
+            LinkedInUrl = dto.LinkedInUrl,
+            TwitterUrl = dto.TwitterUrl,
+            InstagramUrl = dto.InstagramUrl,
+            Email = dto.Email
+        };
+
+        await profileService.UpdateProfileAsync(profile, cancellationToken);
+        TempData["Success"] = "Profil başarıyla güncellendi!";
+        return RedirectToAction(nameof(Index));
     }
 }

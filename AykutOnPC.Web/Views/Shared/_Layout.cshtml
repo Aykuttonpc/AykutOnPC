@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="utf-8" />
@@ -13,11 +13,15 @@
     <!-- Icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 
+    <!-- AOS CSS -->
+    <link href="https://unpkg.com/aos@2.3.1/dist/aos.css" rel="stylesheet">
+
     <!-- Styles -->
     <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
 </head>
 <body>
-    
+    <div id="particles-js"></div>
+
     <nav class="navbar">
         <a asp-controller="Home" asp-action="Index" class="nav-brand">AykutOnPC</a>
         <div class="nav-links">
@@ -38,6 +42,12 @@
     <partial name="_AIWidget" />
 
     <script src="~/lib/jquery/dist/jquery.min.js"></script>
+    <!-- Cyberpunk UI Scripts -->
+    <script src="https://cdn.jsdelivr.net/particles.js/2.0.0/particles.min.js"></script>
+    <script src="https://unpkg.com/aos@2.3.1/dist/aos.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/howler/2.2.3/howler.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/vanilla-tilt/1.8.0/vanilla-tilt.min.js"></script>
+
     <script src="~/js/site.js" asp-append-version="true"></script>
     <script>
         $(document).ready(function() {
@@ -129,6 +139,79 @@
                     sendMessage();
                 }
             });
+
+            // ==========================================
+            // CYBERPUNK INITIALIZATIONS
+            // ==========================================
+
+            // 1. AOS (Animate On Scroll)
+            AOS.init({
+                duration: 800,
+                once: true,
+                offset: 100
+            });
+
+            // 2. Particles.js Initialization
+            if (window.particlesJS) {
+                particlesJS('particles-js', {
+                    "particles": {
+                        "number": { "value": 60, "density": { "enable": true, "value_area": 800 } },
+                        "color": { "value": ["#6d28d9", "#06b6d4"] },
+                        "shape": { "type": "circle" },
+                        "opacity": { "value": 0.5, "random": false },
+                        "size": { "value": 3, "random": true },
+                        "line_linked": {
+                            "enable": true,
+                            "distance": 150,
+                            "color": "#6d28d9",
+                            "opacity": 0.4,
+                            "width": 1
+                        },
+                        "move": {
+                            "enable": true,
+                            "speed": 2,
+                            "direction": "none",
+                            "random": false,
+                            "straight": false,
+                            "out_mode": "out",
+                            "bounce": false,
+                        }
+                    },
+                    "interactivity": {
+                        "detect_on": "canvas",
+                        "events": {
+                            "onhover": { "enable": true, "mode": "grab" },
+                            "onclick": { "enable": true, "mode": "push" },
+                            "resize": true
+                        },
+                        "modes": {
+                            "grab": { "distance": 140, "line_linked": { "opacity": 1 } },
+                            "push": { "particles_nb": 4 }
+                        }
+                    },
+                    "retina_detect": true
+                });
+            }
+
+            // 3. SFX Initialization (Howler)
+            // Note: Sounds will only play after the user makes their first interaction (click) due to browser policies.
+            const sfxHover = new Howl({
+                src: ['https://assets.mixkit.co/active_storage/sfx/2568/2568-preview.mp3'], // Synth slight beep
+                volume: 0.1
+            });
+            const sfxClick = new Howl({
+                src: ['https://assets.mixkit.co/active_storage/sfx/2571/2571-preview.mp3'], // Metallic click
+                volume: 0.2
+            });
+
+            // Bind sound to elements dynamically
+            $(document).on('mouseenter', 'a, button, .card', function() {
+                try { sfxHover.play(); } catch(e){}
+            });
+            $(document).on('mousedown', 'a, button', function() {
+                try { sfxClick.play(); } catch(e){}
+            });
+
         });
     </script>
     @await RenderSectionAsync("Scripts", required: false)

@@ -1,5 +1,6 @@
+using AykutOnPC.Core.DTOs;
 using AykutOnPC.Core.Entities;
-using AykutOnPC.Infrastructure.Data;
+using AykutOnPC.Core.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -7,18 +8,12 @@ using Microsoft.EntityFrameworkCore;
 namespace AykutOnPC.Web.Controllers;
 
 [Authorize(Roles = "Admin")]
-public class EducationController : Controller
+public class EducationController(IEducationService educationService) : Controller
 {
-    private readonly AppDbContext _context;
-
-    public EducationController(AppDbContext context)
+    public async Task<IActionResult> Index(CancellationToken cancellationToken)
     {
-        _context = context;
-    }
-
-    public async Task<IActionResult> Index()
-    {
-        return View(await _context.Educations.OrderByDescending(e => e.StartDate).ToListAsync());
+        var educations = await educationService.GetAllAsync(cancellationToken);
+        return View(educations);
     }
 
     public IActionResult Create()
@@ -28,59 +23,74 @@ public class EducationController : Controller
 
     [HttpPost]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> Create(Education education)
+    public async Task<IActionResult> Create(CreateEducationDto dto, CancellationToken cancellationToken)
     {
-        if (ModelState.IsValid)
+        if (!ModelState.IsValid)
+            return View(dto);
+
+        var education = new Education
         {
-            _context.Add(education);
-            await _context.SaveChangesAsync();
-            return RedirectToAction(nameof(Index));
-        }
-        return View(education);
+            Institution = dto.Institution,
+            Degree = dto.Degree,
+            FieldOfStudy = dto.FieldOfStudy,
+            StartDate = dto.StartDate,
+            EndDate = dto.EndDate,
+            Description = dto.Description,
+            Grade = dto.Grade
+        };
+
+        await educationService.CreateAsync(education, cancellationToken);
+        return RedirectToAction(nameof(Index));
     }
 
-    public async Task<IActionResult> Edit(int? id)
+    public async Task<IActionResult> Edit(int? id, CancellationToken cancellationToken)
     {
-        if (id == null) return NotFound();
+        if (id is null) return NotFound();
 
-        var education = await _context.Educations.FindAsync(id);
-        if (education == null) return NotFound();
+        var education = await educationService.GetByIdAsync(id.Value, cancellationToken);
+        if (education is null) return NotFound();
         return View(education);
     }
 
     [HttpPost]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> Edit(int id, Education education)
+    public async Task<IActionResult> Edit(int id, UpdateEducationDto dto, CancellationToken cancellationToken)
     {
-        if (id != education.Id) return NotFound();
+        if (id != dto.Id) return NotFound();
 
-        if (ModelState.IsValid)
+        if (!ModelState.IsValid)
+            return View(dto);
+
+        try
         {
-            try
+            var education = new Education
             {
-                _context.Update(education);
-                await _context.SaveChangesAsync();
-            }
-            catch (DbUpdateConcurrencyException)
-            {
-                if (!_context.Educations.Any(e => e.Id == id)) return NotFound();
-                else throw;
-            }
-            return RedirectToAction(nameof(Index));
+                Id = dto.Id,
+                Institution = dto.Institution,
+                Degree = dto.Degree,
+                FieldOfStudy = dto.FieldOfStudy,
+                StartDate = dto.StartDate,
+                EndDate = dto.EndDate,
+                Description = dto.Description,
+                Grade = dto.Grade
+            };
+
+            await educationService.UpdateAsync(education, cancellationToken);
         }
-        return View(education);
+        catch (DbUpdateConcurrencyException)
+        {
+            if (!await educationService.ExistsAsync(id, cancellationToken))
+                return NotFound();
+            throw;
+        }
+        return RedirectToAction(nameof(Index));
     }
 
-    public async Task<IActionResult> Delete(int? id)
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> Delete(int id, CancellationToken cancellationToken)
     {
-        if (id == null) return NotFound();
-
-        var education = await _context.Educations.FindAsync(id);
-        if (education != null)
-        {
-            _context.Educations.Remove(education);
-            await _context.SaveChangesAsync();
-        }
+        await educationService.DeleteAsync(id, cancellationToken);
         return RedirectToAction(nameof(Index));
     }
 }

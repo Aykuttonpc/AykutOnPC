@@ -52,7 +52,12 @@
             <a asp-controller="Education" asp-action="Index" class="admin-nav-item"><i class="fa-solid fa-graduation-cap"></i> Education</a>
             <div style="flex: 1"></div>
             <a asp-controller="Home" asp-action="Index" target="_blank" class="admin-nav-item"><i class="fa-solid fa-external-link"></i> View Site</a>
-            <a asp-controller="Account" asp-action="Logout" class="admin-nav-item"><i class="fa-solid fa-sign-out"></i> Logout</a>
+            <form asp-controller="Account" asp-action="Logout" method="post" style="margin: 0; padding: 0; display: inline;">
+                @Html.AntiForgeryToken()
+                <button type="submit" class="admin-nav-item" style="background: none; border: none; width: 100%; text-align: left; font-family: inherit; font-size: inherit; cursor: pointer;">
+                    <i class="fa-solid fa-sign-out"></i> Logout
+                </button>
+            </form>
         </div>
         
         <div class="admin-content">

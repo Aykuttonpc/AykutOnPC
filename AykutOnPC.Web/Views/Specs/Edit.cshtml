@@ -1,4 +1,4 @@
-@model AykutOnPC.Core.Entities.Spec
+@model AykutOnPC.Core.DTOs.UpdateSpecDto
 
 @{
     ViewData["Title"] = "Edit Spec";
@@ -8,7 +8,8 @@
 <h1 style="margin-bottom: 2rem;">Edit Spec</h1>
 
 <div class="card" style="height: auto; max-height: none;">
-    <form asp-action="Edit">
+    <form asp-action="Edit" method="post">
+        @Html.AntiForgeryToken()
         <input type="hidden" asp-for="Id" />
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem;">
             <div style="margin-bottom: 1.5rem;">

@@ -1,25 +1,19 @@
+using AykutOnPC.Core.DTOs;
 using AykutOnPC.Core.Entities;
-using AykutOnPC.Infrastructure.Data;
+using AykutOnPC.Core.Interfaces;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-
-using Microsoft.AspNetCore.Authorization;
 
 namespace AykutOnPC.Web.Controllers;
 
 [Authorize(Roles = "Admin")]
-public class SpecsController : Controller
+public class SpecsController(ISpecService specService) : Controller
 {
-    private readonly AppDbContext _context;
-
-    public SpecsController(AppDbContext context)
+    public async Task<IActionResult> Index(CancellationToken cancellationToken)
     {
-        _context = context;
-    }
-
-    public async Task<IActionResult> Index()
-    {
-        return View(await _context.Specs.OrderByDescending(s => s.Proficiency).ToListAsync());
+        var specs = await specService.GetAllAsync(cancellationToken);
+        return View(specs);
     }
 
     public IActionResult Create()
@@ -29,59 +23,71 @@ public class SpecsController : Controller
 
     [HttpPost]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> Create(Spec spec)
+    public async Task<IActionResult> Create(CreateSpecDto dto, CancellationToken cancellationToken)
     {
-        if (ModelState.IsValid)
+        if (!ModelState.IsValid)
+            return View(dto);
+
+        var spec = new Spec(dto.Name, dto.Category, dto.Proficiency)
         {
-            _context.Add(spec);
-            await _context.SaveChangesAsync();
-            return RedirectToAction(nameof(Index));
-        }
-        return View(spec);
+            IconClass = dto.IconClass
+        };
+
+        await specService.CreateAsync(spec, cancellationToken);
+        return RedirectToAction(nameof(Index));
     }
 
-    public async Task<IActionResult> Edit(int? id)
+    public async Task<IActionResult> Edit(int? id, CancellationToken cancellationToken)
     {
-        if (id == null) return NotFound();
+        if (id is null) return NotFound();
 
-        var spec = await _context.Specs.FindAsync(id);
-        if (spec == null) return NotFound();
-        return View(spec);
+        var spec = await specService.GetByIdAsync(id.Value, cancellationToken);
+        if (spec is null) return NotFound();
+        
+        var dto = new UpdateSpecDto
+        {
+            Id = spec.Id,
+            Name = spec.Name,
+            Category = spec.Category,
+            Proficiency = spec.Proficiency,
+            IconClass = spec.IconClass
+        };
+        return View(dto);
     }
 
     [HttpPost]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> Edit(int id, Spec spec)
+    public async Task<IActionResult> Edit(int id, UpdateSpecDto dto, CancellationToken cancellationToken)
     {
-        if (id != spec.Id) return NotFound();
+        if (id != dto.Id) return NotFound();
 
-        if (ModelState.IsValid)
+        if (!ModelState.IsValid)
+            return View(dto);
+
+        try
         {
-            try
+            var spec = new Spec(dto.Name, dto.Category, dto.Proficiency)
             {
-                _context.Update(spec);
-                await _context.SaveChangesAsync();
-            }
-            catch (DbUpdateConcurrencyException)
-            {
-                if (!_context.Specs.Any(e => e.Id == id)) return NotFound();
-                else throw;
-            }
-            return RedirectToAction(nameof(Index));
+                Id = dto.Id,
+                IconClass = dto.IconClass
+            };
+
+            await specService.UpdateAsync(spec, cancellationToken);
         }
-        return View(spec);
+        catch (DbUpdateConcurrencyException)
+        {
+            if (!await specService.ExistsAsync(id, cancellationToken))
+                return NotFound();
+            throw;
+        }
+        return RedirectToAction(nameof(Index));
     }
 
-    public async Task<IActionResult> Delete(int? id)
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> Delete(int id, CancellationToken cancellationToken)
     {
-        if (id == null) return NotFound();
-
-        var spec = await _context.Specs.FindAsync(id);
-        if (spec != null)
-        {
-            _context.Specs.Remove(spec);
-            await _context.SaveChangesAsync();
-        }
+        await specService.DeleteAsync(id, cancellationToken);
         return RedirectToAction(nameof(Index));
     }
 }

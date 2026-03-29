@@ -1,35 +1,71 @@
 using System.Net.Http.Json;
 using AykutOnPC.Core.Entities;
 using AykutOnPC.Core.Interfaces;
+using Microsoft.Extensions.Caching.Memory;
+using Microsoft.Extensions.Logging;
 
 namespace AykutOnPC.Infrastructure.Services;
 
-public class GitHubService(HttpClient httpClient) : IGitHubService
+public class GitHubService : IGitHubService
 {
-    public async Task<IEnumerable<Build>> GetRepositoriesAsync(string username)
+    private readonly HttpClient _httpClient;
+    private readonly IMemoryCache _cache;
+    private readonly ILogger<GitHubService> _logger;
+    private const string CacheKeyPrefix = "github_repos_";
+    private static readonly TimeSpan CacheDuration = TimeSpan.FromMinutes(10);
+
+    public GitHubService(HttpClient httpClient, IMemoryCache cache, ILogger<GitHubService> logger)
     {
+        _httpClient = httpClient;
+        _cache = cache;
+        _logger = logger;
+
+        // Set User-Agent once in constructor, not per-request
+        if (!_httpClient.DefaultRequestHeaders.UserAgent.Any())
+        {
+            _httpClient.DefaultRequestHeaders.UserAgent.ParseAdd("AykutOnPC-App/1.0");
+        }
+    }
+
+    public async Task<IEnumerable<Build>> GetRepositoriesAsync(string username, CancellationToken cancellationToken = default)
+    {
+        var cacheKey = $"{CacheKeyPrefix}{username}";
+
+        if (_cache.TryGetValue(cacheKey, out IEnumerable<Build>? cachedBuilds) && cachedBuilds is not null)
+        {
+            return cachedBuilds;
+        }
+
         try
         {
-            // Add User-Agent as required by GitHub API
-            httpClient.DefaultRequestHeaders.UserAgent.ParseAdd("AykutOnPC-App");
+            var repos = await _httpClient.GetFromJsonAsync<List<GitHubRepoDto>>(
+                $"https://api.github.com/users/{Uri.EscapeDataString(username)}/repos?sort=updated&per_page=100",
+                cancellationToken);
 
-            var repos = await httpClient.GetFromJsonAsync<List<GitHubRepoDto>>($"https://api.github.com/users/{username}/repos?sort=updated&per_page=100");
-            
-            if (repos == null) return Enumerable.Empty<Build>();
+            if (repos is null)
+                return Enumerable.Empty<Build>();
 
-            return repos.Select(r => new Build(
-                r.Name ?? "Unnamed", 
-                r.Description ?? "No description available.", 
+            var builds = repos.Select(r => new Build(
+                r.Name ?? "Unnamed",
+                r.Description ?? "No description available.",
                 r.Language ?? "Unknown")
             {
                 RepoUrl = r.HtmlUrl,
                 CreatedAt = r.CreatedAt,
                 LiveUrl = r.Homepage
-            });
+            }).ToList();
+
+            _cache.Set(cacheKey, (IEnumerable<Build>)builds, CacheDuration);
+            return builds;
         }
-        catch
+        catch (HttpRequestException ex)
         {
-            // Fallback to empty list or handled error in production
+            _logger.LogWarning(ex, "Failed to fetch GitHub repositories for user '{Username}'.", username);
+            return Enumerable.Empty<Build>();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Unexpected error fetching GitHub repositories for user '{Username}'.", username);
             return Enumerable.Empty<Build>();
         }
     }

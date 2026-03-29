@@ -37,11 +37,12 @@ else
                     <a asp-action="Edit" asp-route-id="@exp.Id" class="btn-primary" style="padding: 0.5rem 1rem;">
                         <i class="fa-solid fa-edit"></i>
                     </a>
-                    <a asp-action="Delete" asp-route-id="@exp.Id" class="btn-primary" 
-                       style="padding: 0.5rem 1rem; background: rgba(239, 68, 68, 0.2); border-color: #ef4444;"
-                       onclick="return confirm('Are you sure you want to delete this experience?')">
-                        <i class="fa-solid fa-trash"></i>
-                    </a>
+                    <form asp-action="Delete" asp-route-id="@exp.Id" method="post" style="display:inline;" onsubmit="return confirm('Are you sure you want to delete this experience?');">
+                        @Html.AntiForgeryToken()
+                        <button type="submit" class="btn-primary" style="padding: 0.5rem 1rem; background: rgba(239, 68, 68, 0.2); border-color: #ef4444;">
+                            <i class="fa-solid fa-trash"></i>
+                        </button>
+                    </form>
                 </div>
             </div>
         }

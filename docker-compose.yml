@@ -1,0 +1,25 @@
+version: '3.8'
+
+services:
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8080:8080"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Production
+      - GeminiSettings__ApiKey=${GEMINI_API_KEY}
+      - ConnectionStrings__DefaultConnection=Server=db;Database=AykutOnPC_Db;User=sa;Password=${DB_PASSWORD};TrustServerCertificate=True
+      - SeedData__AdminUser__Password=${ADMIN_PASSWORD}
+    depends_on:
+      - db
+
+  db:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    ports:
+      - "1433:1433"
+    environment:
+      - ACCEPT_EULA=Y
+      - MSSQL_SA_PASSWORD=${DB_PASSWORD}
+      - MSSQL_PID=Express

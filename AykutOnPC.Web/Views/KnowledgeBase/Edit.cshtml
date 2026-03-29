@@ -1,4 +1,4 @@
-@model AykutOnPC.Core.Entities.KnowledgeEntry
+@model AykutOnPC.Core.DTOs.UpdateKnowledgeEntryDto
 
 @{
     ViewData["Title"] = "Edit Knowledge";
@@ -8,7 +8,8 @@
 <h1 style="margin-bottom: 2rem;">Edit Knowledge</h1>
 
 <div class="card" style="height: auto; max-height: none;">
-    <form asp-action="Edit">
+    <form asp-action="Edit" method="post">
+        @Html.AntiForgeryToken()
         <input type="hidden" asp-for="Id" />
         <div style="margin-bottom: 1.5rem;">
             <label style="display: block; margin-bottom: 0.5rem; color: var(--secondary);">Topic</label>

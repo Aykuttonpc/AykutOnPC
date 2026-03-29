@@ -1,56 +1,48 @@
+using AykutOnPC.Core.Configuration;
+using AykutOnPC.Core.Interfaces;
 using AykutOnPC.Web.Models;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Options;
 using System.Diagnostics;
-using AykutOnPC.Infrastructure.Data;
-using Microsoft.EntityFrameworkCore;
-using AykutOnPC.Core.Interfaces;
 
 namespace AykutOnPC.Web.Controllers;
 
-public class HomeController : Controller
+public class HomeController(
+    ILogger<HomeController> logger,
+    IGitHubService gitHubService,
+    ISpecService specService,
+    IExperienceService experienceService,
+    IEducationService educationService,
+    IProfileService profileService,
+    IOptions<SeedDataSettings> seedDataOptions) : Controller
 {
-    private readonly ILogger<HomeController> _logger;
-    private readonly AppDbContext _context;
-    private readonly IGitHubService _gitHubService;
-    private readonly IConfiguration _configuration;
+    private readonly SeedDataSettings _seedData = seedDataOptions.Value;
 
-    public HomeController(ILogger<HomeController> logger, AppDbContext context, IGitHubService gitHubService, IConfiguration configuration)
+    public async Task<IActionResult> Index(CancellationToken cancellationToken)
     {
-        _logger = logger;
-        _context = context;
-        _gitHubService = gitHubService;
-        _configuration = configuration;
-    }
+        var ghUsername = _seedData.GitHubUsername;
 
-    public async Task<IActionResult> Index()
-    {
-        // 1. Fetch Configuration
-        string ghUsername = _configuration["SeedData:GitHubUsername"] ?? "Aykuttonpc";
-        string title = _configuration["SeedData:HeroTitle"] ?? "Hello";
-        string subtitle = _configuration["SeedData:HeroSubtitle"] ?? "Developer";
+        // GitHub API call can run in parallel with DB calls since it uses HttpClient (no DbContext)
+        var reposTask = gitHubService.GetRepositoriesAsync(ghUsername, cancellationToken);
 
-        // 2. Fetch Projects using dynamic username
-        var allGitHubBuilds = await _gitHubService.GetRepositoriesAsync(ghUsername); 
-        
-        var specs = await _context.Specs.OrderByDescending(s => s.Proficiency).Take(8).ToListAsync();
-        var experiences = await _context.Experiences.OrderByDescending(e => e.StartDate).ToListAsync();
-        var educations = await _context.Educations.OrderByDescending(e => e.StartDate).ToListAsync();
-        var profile = await _context.Profiles.FirstOrDefaultAsync() ?? new AykutOnPC.Core.Entities.Profile();
+        // DbContext is NOT thread-safe, so DB calls must be sequential
+        var specs = await specService.GetTopAsync(8, cancellationToken);
+        var experiences = await experienceService.GetAllAsync(cancellationToken);
+        var educations = await educationService.GetAllAsync(cancellationToken);
+        var profile = await profileService.GetOrCreateProfileAsync(cancellationToken);
 
         var viewModel = new DashboardViewModel
         {
-            RecentBuilds = allGitHubBuilds,
+            RecentBuilds = await reposTask,
             TopSpecs = specs,
             Experiences = experiences,
             Educations = educations,
             UserProfile = profile,
-            
-            // Static Config Mapped to ViewModel
             GitHubUsername = ghUsername,
-            HeroTitle = title,
-            HeroSubtitle = subtitle
+            HeroTitle = _seedData.HeroTitle,
+            HeroSubtitle = _seedData.HeroSubtitle
         };
-        
+
         return View(viewModel);
     }
 

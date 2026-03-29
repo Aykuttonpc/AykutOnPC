@@ -1,4 +1,4 @@
-@model AykutOnPC.Core.Entities.Spec
+@model AykutOnPC.Core.DTOs.CreateSpecDto
 
 @{
     ViewData["Title"] = "Add Spec";
@@ -8,7 +8,8 @@
 <h1 style="margin-bottom: 2rem;">Add New Spec</h1>
 
 <div class="card" style="height: auto; max-height: none;">
-    <form asp-action="Create">
+    <form asp-action="Create" method="post">
+        @Html.AntiForgeryToken()
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem;">
             <div style="margin-bottom: 1.5rem;">
                 <label style="display: block; margin-bottom: 0.5rem; color: var(--secondary);">Name</label>

@@ -1,25 +1,19 @@
+using AykutOnPC.Core.DTOs;
 using AykutOnPC.Core.Entities;
-using AykutOnPC.Infrastructure.Data;
+using AykutOnPC.Core.Interfaces;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-
-using Microsoft.AspNetCore.Authorization;
 
 namespace AykutOnPC.Web.Controllers;
 
 [Authorize(Roles = "Admin")]
-public class KnowledgeBaseController : Controller
+public class KnowledgeBaseController(IKnowledgeBaseService knowledgeBaseService) : Controller
 {
-    private readonly AppDbContext _context;
-
-    public KnowledgeBaseController(AppDbContext context)
+    public async Task<IActionResult> Index(CancellationToken cancellationToken)
     {
-        _context = context;
-    }
-
-    public async Task<IActionResult> Index()
-    {
-        return View(await _context.KnowledgeEntries.OrderByDescending(k => k.LastUpdated).ToListAsync());
+        var entries = await knowledgeBaseService.GetAllAsync(cancellationToken);
+        return View(entries);
     }
 
     public IActionResult Create()
@@ -29,61 +23,74 @@ public class KnowledgeBaseController : Controller
 
     [HttpPost]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> Create(KnowledgeEntry entry)
+    public async Task<IActionResult> Create(CreateKnowledgeEntryDto dto, CancellationToken cancellationToken)
     {
-        if (ModelState.IsValid)
+        if (!ModelState.IsValid)
+            return View(dto);
+
+        var entry = new KnowledgeEntry
         {
-            entry.LastUpdated = DateTime.Now;
-            _context.Add(entry);
-            await _context.SaveChangesAsync();
-            return RedirectToAction(nameof(Index));
-        }
-        return View(entry);
+            Topic = dto.Topic,
+            Content = dto.Content,
+            Keywords = dto.Keywords
+        };
+
+        await knowledgeBaseService.CreateAsync(entry, cancellationToken);
+        return RedirectToAction(nameof(Index));
     }
 
-    public async Task<IActionResult> Edit(int? id)
+    public async Task<IActionResult> Edit(int? id, CancellationToken cancellationToken)
     {
-        if (id == null) return NotFound();
+        if (id is null) return NotFound();
 
-        var entry = await _context.KnowledgeEntries.FindAsync(id);
-        if (entry == null) return NotFound();
-        return View(entry);
+        var entry = await knowledgeBaseService.GetByIdAsync(id.Value, cancellationToken);
+        if (entry is null) return NotFound();
+        
+        var dto = new UpdateKnowledgeEntryDto
+        {
+            Id = entry.Id,
+            Topic = entry.Topic,
+            Content = entry.Content,
+            Keywords = entry.Keywords
+        };
+        return View(dto);
     }
 
     [HttpPost]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> Edit(int id, KnowledgeEntry entry)
+    public async Task<IActionResult> Edit(int id, UpdateKnowledgeEntryDto dto, CancellationToken cancellationToken)
     {
-        if (id != entry.Id) return NotFound();
+        if (id != dto.Id) return NotFound();
 
-        if (ModelState.IsValid)
+        if (!ModelState.IsValid)
+            return View(dto);
+
+        try
         {
-            try
+            var entry = new KnowledgeEntry
             {
-                entry.LastUpdated = DateTime.Now;
-                _context.Update(entry);
-                await _context.SaveChangesAsync();
-            }
-            catch (DbUpdateConcurrencyException)
-            {
-                if (!_context.KnowledgeEntries.Any(e => e.Id == id)) return NotFound();
-                else throw;
-            }
-            return RedirectToAction(nameof(Index));
+                Id = dto.Id,
+                Topic = dto.Topic,
+                Content = dto.Content,
+                Keywords = dto.Keywords
+            };
+
+            await knowledgeBaseService.UpdateAsync(entry, cancellationToken);
         }
-        return View(entry);
+        catch (DbUpdateConcurrencyException)
+        {
+            if (!await knowledgeBaseService.ExistsAsync(id, cancellationToken))
+                return NotFound();
+            throw;
+        }
+        return RedirectToAction(nameof(Index));
     }
 
-    public async Task<IActionResult> Delete(int? id)
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> Delete(int id, CancellationToken cancellationToken)
     {
-        if (id == null) return NotFound();
-
-        var entry = await _context.KnowledgeEntries.FindAsync(id);
-        if (entry != null)
-        {
-            _context.KnowledgeEntries.Remove(entry);
-            await _context.SaveChangesAsync();
-        }
+        await knowledgeBaseService.DeleteAsync(id, cancellationToken);
         return RedirectToAction(nameof(Index));
     }
 }

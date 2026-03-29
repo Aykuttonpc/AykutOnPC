@@ -1,59 +1,80 @@
-using System.Security.Cryptography;
-using System.Text;
+using AykutOnPC.Core.Configuration;
 using AykutOnPC.Core.Entities;
-using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 
 namespace AykutOnPC.Infrastructure.Data;
 
 public static class DbInitializer
 {
-    public static void Initialize(AppDbContext context, IConfiguration configuration)
+    public static void Initialize(AppDbContext context, IOptions<SeedDataSettings> seedOptions, ILogger logger)
     {
-        context.Database.EnsureCreated();
+        var seedData = seedOptions.Value;
 
         // Seed Admin User
         if (!context.Users.Any())
         {
-            var adminUser = configuration.GetSection("SeedData:AdminUser");
-            var password = adminUser["Password"] ?? "admin123";
-            
+            var adminPassword = seedData.AdminUser.Password;
+            if (string.IsNullOrWhiteSpace(adminPassword))
+            {
+                logger.LogWarning("Admin password is not configured in SeedData:AdminUser:Password. Skipping admin user seed.");
+                return;
+            }
+
             context.Users.Add(new User
             {
-                Username = adminUser["Username"] ?? "aykut",
-                PasswordHash = HashPassword(password)
+                Username = seedData.AdminUser.Username,
+                PasswordHash = BCrypt.Net.BCrypt.HashPassword(adminPassword, workFactor: 12),
+                Role = "Admin"
             });
-            context.Users.Add(new User 
-            { 
-               Username = "ai_mcp_user", 
-               PasswordHash = HashPassword("McpConnect@2026") 
-            }); 
             context.SaveChanges();
+            logger.LogInformation("Admin user '{Username}' seeded successfully.", seedData.AdminUser.Username);
         }
 
         // Seed Specs (Skills)
         if (!context.Specs.Any())
         {
-            context.Specs.AddRange(
-                new Spec("C#", "Language", 95),
-                new Spec(".NET Core", "Framework", 90),
-                new Spec("SQL Server", "Database", 85),
-                new Spec("Docker", "Tool", 80),
-                new Spec("System Design", "Concept", 75)
-            );
+            if (seedData.Specs.Count > 0)
+            {
+                context.Specs.AddRange(
+                    seedData.Specs.Select(s => new Spec(s.Name, s.Category, s.Proficiency))
+                );
+            }
+            else
+            {
+                context.Specs.AddRange(
+                    new Spec("C#", "Language", 95),
+                    new Spec(".NET Core", "Framework", 90),
+                    new Spec("SQL Server", "Database", 85),
+                    new Spec("Docker", "Tool", 80),
+                    new Spec("System Design", "Concept", 75)
+                );
+            }
             context.SaveChanges();
+            logger.LogInformation("Specs seeded successfully.");
         }
     }
 
-    public static string HashPassword(string password)
+    /// <summary>
+    /// Migrates existing SHA256 hashes to BCrypt. Run once during upgrade.
+    /// </summary>
+    public static void MigratePasswordHashes(AppDbContext context, ILogger logger)
     {
-        using var sha256 = SHA256.Create();
-        var bytes = sha256.ComputeHash(Encoding.UTF8.GetBytes(password));
-        return Convert.ToBase64String(bytes);
-    }
-    
-    public static bool VerifyPassword(string inputPassword, string storedHash)
-    {
-        var hashOfInput = HashPassword(inputPassword);
-        return hashOfInput == storedHash;
+        var users = context.Users.ToList();
+        foreach (var user in users)
+        {
+            // BCrypt hashes start with "$2a$", "$2b$", or "$2y$"
+            if (!user.PasswordHash.StartsWith("$2"))
+            {
+                // The old SHA256 hash cannot be reversed.
+                // Set a temporary password and force reset.
+                var tempPassword = Guid.NewGuid().ToString("N")[..16];
+                user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(tempPassword, workFactor: 12);
+                logger.LogWarning(
+                    "User '{Username}' had legacy SHA256 hash. Password reset to temporary value. User must change password.",
+                    user.Username);
+            }
+        }
+        context.SaveChanges();
     }
 }

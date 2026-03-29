@@ -54,15 +54,20 @@
             <div style="color: #ef4444; margin-bottom: 1rem;">@ViewBag.Error</div>
         }
 
+        @if (!ViewData.ModelState.IsValid)
+        {
+            <div style="color: #ef4444; margin-bottom: 1rem; font-size: 0.9em;">
+                @Html.ValidationSummary(false, "", new { @class = "text-danger" })
+            </div>
+        }
+
         <form method="post">
+            @Html.AntiForgeryToken()
             <input type="text" name="username" class="login-input" placeholder="Identity" required autocomplete="off" />
             <input type="password" name="password" class="login-input" placeholder="Passkey" required />
             <button type="submit" class="btn-primary" style="width: 100%; margin-top: 1rem;">Initialize Session</button>
         </form>
 
-        <div style="margin-top: 1.5rem; color: var(--text-muted); font-size: 0.9rem;">
-            Don't have an account? <a href="/Account/Register" style="color: var(--secondary); text-decoration: none;">Create one</a>
-        </div>
-    </div>
+
 </body>
 </html>

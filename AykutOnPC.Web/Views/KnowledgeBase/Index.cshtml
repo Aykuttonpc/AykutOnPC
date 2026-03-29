@@ -30,7 +30,12 @@
             </div>
             <div style="display: flex; gap: 1rem;">
                 <a asp-action="Edit" asp-route-id="@item.Id" style="color: var(--primary);"><i class="fa-solid fa-pen"></i></a>
-                <a asp-action="Delete" asp-route-id="@item.Id" style="color: #ef4444;" onclick="return confirm('Are you sure?')"><i class="fa-solid fa-trash"></i></a>
+                <form asp-action="Delete" asp-route-id="@item.Id" method="post" style="display:inline;" onsubmit="return confirm('Are you sure?');">
+                    @Html.AntiForgeryToken()
+                    <button type="submit" style="color: #ef4444; background: none; border: none; cursor: pointer; padding: 0;">
+                        <i class="fa-solid fa-trash"></i>
+                    </button>
+                </form>
             </div>
         </div>
     }

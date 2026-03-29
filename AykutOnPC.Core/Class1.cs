@@ -1,6 +1,2 @@
-﻿namespace AykutOnPC.Core;
-
-public class Class1
-{
-
-}
+// This file is intentionally left empty.
+// AykutOnPC.Core contains Entities, Interfaces, DTOs, and Configuration classes.
