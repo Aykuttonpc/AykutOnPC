@@ -21,6 +21,7 @@ RUN dotnet publish "AykutOnPC.Web.csproj" -c Release -o /app/publish /p:UseAppHo
 # Use the ASP.NET Core runtime image to run the app
 FROM mcr.microsoft.com/dotnet/aspnet:9.0 AS final
 WORKDIR /app
+RUN mkdir -p /app/keys
 COPY --from=build /app/publish .
 
 # Expose ports
