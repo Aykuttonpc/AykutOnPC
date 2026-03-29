@@ -50,6 +50,11 @@ var app = builder.Build();
 // ──────────────────────────────────────────────
 // Middleware Pipeline
 // ──────────────────────────────────────────────
+app.UseForwardedHeaders(new ForwardedHeadersOptions
+{
+    ForwardedHeaders = Microsoft.AspNetCore.HttpOverrides.ForwardedHeaders.XForwardedFor | Microsoft.AspNetCore.HttpOverrides.ForwardedHeaders.XForwardedProto
+});
+
 app.UseExceptionHandler("/Home/Error");
 
 if (!app.Environment.IsDevelopment())
@@ -93,7 +98,13 @@ using (var scope = app.Services.CreateScope())
     DbInitializer.MigratePasswordHashes(context, logger);
 }
 
-app.UseHttpsRedirection();
+// On Render/Docker, HTTPS redirection is usually handled by the proxy.
+// Only use it if not behind a proxy or if specifically needed.
+if (app.Environment.IsDevelopment())
+{
+    app.UseHttpsRedirection();
+}
+
 app.UseRouting();
 
 app.UseCors("DefaultPolicy");
