@@ -21,9 +21,23 @@ public static class ServiceExtensions
     /// </summary>
     public static IServiceCollection AddAppConfiguration(this IServiceCollection services, IConfiguration configuration)
     {
+        // Bind structured sections
         services.Configure<JwtSettings>(configuration.GetSection(JwtSettings.SectionName));
         services.Configure<GeminiSettings>(configuration.GetSection(GeminiSettings.SectionName));
         services.Configure<SeedDataSettings>(configuration.GetSection(SeedDataSettings.SectionName));
+
+        // Fallback for flat environment variables (common in Render/Docker)
+        services.PostConfigure<GeminiSettings>(options =>
+        {
+            if (string.IsNullOrEmpty(options.ApiKey))
+                options.ApiKey = configuration["GEMINI_API_KEY"] ?? string.Empty;
+        });
+
+        services.PostConfigure<SeedDataSettings>(options =>
+        {
+            if (string.IsNullOrEmpty(options.AdminUser.Password))
+                options.AdminUser.Password = configuration["ADMIN_PASSWORD"] ?? string.Empty;
+        });
 
         return services;
     }

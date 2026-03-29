@@ -11,24 +11,32 @@ public static class DbInitializer
     {
         var seedData = seedOptions.Value;
 
-        // Seed Admin User
-        if (!context.Users.Any())
-        {
-            var adminPassword = seedData.AdminUser.Password;
-            if (string.IsNullOrWhiteSpace(adminPassword))
-            {
-                logger.LogWarning("Admin password is not configured in SeedData:AdminUser:Password. Skipping admin user seed.");
-                return;
-            }
+        // Seed or Update Admin User
+        var adminUsername = seedData.AdminUser.Username ?? "aykut";
+        var adminPassword = seedData.AdminUser.Password;
+        
+        var existingAdmin = context.Users.FirstOrDefault(u => u.Username == adminUsername);
 
-            context.Users.Add(new User
+        if (existingAdmin == null)
+        {
+            if (!string.IsNullOrWhiteSpace(adminPassword))
             {
-                Username = seedData.AdminUser.Username,
-                PasswordHash = BCrypt.Net.BCrypt.HashPassword(adminPassword, workFactor: 12),
-                Role = "Admin"
-            });
+                context.Users.Add(new User
+                {
+                    Username = adminUsername,
+                    PasswordHash = BCrypt.Net.BCrypt.HashPassword(adminPassword, workFactor: 12),
+                    Role = "Admin"
+                });
+                context.SaveChanges();
+                logger.LogInformation("Admin user '{Username}' seeded successfully.", adminUsername);
+            }
+        }
+        else if (!string.IsNullOrWhiteSpace(adminPassword))
+        {
+            // Update password if it's different or if we're in the first setup phase
+            existingAdmin.PasswordHash = BCrypt.Net.BCrypt.HashPassword(adminPassword, workFactor: 12);
             context.SaveChanges();
-            logger.LogInformation("Admin user '{Username}' seeded successfully.", seedData.AdminUser.Username);
+            logger.LogInformation("Admin user '{Username}' password updated from configuration.", adminUsername);
         }
 
         // Seed Specs (Skills)
