@@ -43,7 +43,10 @@ public class GitHubService : IGitHubService
                 cancellationToken);
 
             if (repos is null)
+            {
+                _cache.Set(cacheKey, Enumerable.Empty<Build>(), TimeSpan.FromMinutes(10));
                 return Enumerable.Empty<Build>();
+            }
 
             var builds = repos.Select(r => new Build(
                 r.Name ?? "Unnamed",
@@ -60,12 +63,15 @@ public class GitHubService : IGitHubService
         }
         catch (HttpRequestException ex)
         {
-            _logger.LogWarning(ex, "Failed to fetch GitHub repositories for user '{Username}'.", username);
+            _logger.LogWarning(ex, "Failed to fetch GitHub repositories for user '{Username}'. (Rate Limited or Network issue)", username);
+            // Cache the failure for 1 hour to avoid hammering the API
+            _cache.Set(cacheKey, Enumerable.Empty<Build>(), TimeSpan.FromHours(1));
             return Enumerable.Empty<Build>();
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Unexpected error fetching GitHub repositories for user '{Username}'.", username);
+            _cache.Set(cacheKey, Enumerable.Empty<Build>(), TimeSpan.FromMinutes(5));
             return Enumerable.Empty<Build>();
         }
     }
