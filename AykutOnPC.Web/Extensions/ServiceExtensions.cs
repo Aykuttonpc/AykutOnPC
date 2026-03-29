@@ -75,12 +75,12 @@ public static class ServiceExtensions
     }
 
     /// <summary>
-    /// Registers Entity Framework Core with SQL Server.
+    /// Registers Entity Framework Core with PostgreSQL.
     /// </summary>
     public static IServiceCollection AddDatabase(this IServiceCollection services, IConfiguration configuration)
     {
         services.AddDbContext<AppDbContext>(options =>
-            options.UseSqlServer(
+            options.UseNpgsql(
                 configuration.GetConnectionString("DefaultConnection"),
                 sqlOptions =>
                 {

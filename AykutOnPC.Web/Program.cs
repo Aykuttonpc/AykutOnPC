@@ -57,7 +57,7 @@ if (!app.Environment.IsDevelopment())
     app.UseHsts();
 }
 
-// Seed Data
+// Seed Data & Migrations with Retry Logic for Docker
 using (var scope = app.Services.CreateScope())
 {
     var services = scope.ServiceProvider;
@@ -65,11 +65,31 @@ using (var scope = app.Services.CreateScope())
     var seedOptions = services.GetRequiredService<IOptions<SeedDataSettings>>();
     var logger = services.GetRequiredService<ILoggerFactory>().CreateLogger("DbInitializer");
 
-    // Only Migrate - do NOT call EnsureCreated
-    context.Database.Migrate();
-    DbInitializer.Initialize(context, seedOptions, logger);
+    bool migrationSucceeded = false;
+    int retries = 5;
+    while (!migrationSucceeded && retries > 0)
+    {
+        try
+        {
+            logger.LogInformation("Attempting to apply migrations... (Remaining retries: {Retries})", retries);
+            context.Database.Migrate();
+            migrationSucceeded = true;
+            logger.LogInformation("Migrations applied successfully.");
+        }
+        catch (Exception ex)
+        {
+            retries--;
+            if (retries == 0)
+            {
+                logger.LogCritical(ex, "Could not apply migrations after multiple attempts. Application is exiting.");
+                throw;
+            }
+            logger.LogWarning("Migration failed. Database might not be ready. Retrying in 5 seconds... Error: {Message}", ex.Message);
+            Thread.Sleep(5000);
+        }
+    }
 
-    // One-time migration from SHA256 to BCrypt (safe to run multiple times)
+    DbInitializer.Initialize(context, seedOptions, logger);
     DbInitializer.MigratePasswordHashes(context, logger);
 }
 

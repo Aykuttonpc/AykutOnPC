@@ -10,16 +10,27 @@ services:
     environment:
       - ASPNETCORE_ENVIRONMENT=Production
       - GeminiSettings__ApiKey=${GEMINI_API_KEY}
-      - ConnectionStrings__DefaultConnection=Server=db;Database=AykutOnPC_Db;User=sa;Password=${DB_PASSWORD};TrustServerCertificate=True
+      - ConnectionStrings__DefaultConnection=Host=db;Database=AykutOnPC_Db;Username=postgres;Password=${DB_PASSWORD:-DevOnlyPassword2026!}
       - SeedData__AdminUser__Password=${ADMIN_PASSWORD}
     depends_on:
-      - db
+      db:
+        condition: service_healthy
 
   db:
-    image: mcr.microsoft.com/mssql/server:2022-latest
-    ports:
-      - "1433:1433"
+    image: postgres:15-alpine
     environment:
-      - ACCEPT_EULA=Y
-      - MSSQL_SA_PASSWORD=${DB_PASSWORD}
-      - MSSQL_PID=Express
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=${DB_PASSWORD:-DevOnlyPassword2026!}
+      - POSTGRES_DB=AykutOnPC_Db
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d AykutOnPC_Db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  postgres-data:
