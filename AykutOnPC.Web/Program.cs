@@ -70,9 +70,14 @@ if (!app.Environment.IsDevelopment())
     app.UseHsts();
 }
 
-// Seed Data & Migrations with Retry Logic for Docker
-using (var scope = app.Services.CreateScope())
+// ──────────────────────────────────────────────
+// Async Database Initialization (Background)
+// ──────────────────────────────────────────────
+// We run this in background so Render's port scan doesn't timeout 
+// while waiting for the remote database to respond.
+_ = Task.Run(async () =>
 {
+    using var scope = app.Services.CreateScope();
     var services = scope.ServiceProvider;
     var context = services.GetRequiredService<AppDbContext>();
     var seedOptions = services.GetRequiredService<IOptions<SeedDataSettings>>();
@@ -84,27 +89,27 @@ using (var scope = app.Services.CreateScope())
     {
         try
         {
-            logger.LogInformation("Attempting to apply migrations... (Remaining retries: {Retries})", retries);
-            context.Database.Migrate();
+            logger.LogInformation("Background: Attempting to apply migrations... (Remaining retries: {Retries})", retries);
+            await context.Database.MigrateAsync();
             migrationSucceeded = true;
-            logger.LogInformation("Migrations applied successfully.");
+            logger.LogInformation("Background: Migrations applied successfully.");
+            
+            DbInitializer.Initialize(context, seedOptions, logger);
+            DbInitializer.MigratePasswordHashes(context, logger);
         }
         catch (Exception ex)
         {
             retries--;
             if (retries == 0)
             {
-                logger.LogCritical(ex, "Could not apply migrations after multiple attempts. Application is exiting.");
-                throw;
+                logger.LogCritical(ex, "Background: Could not apply migrations. Site may be unstable.");
+                break;
             }
-            logger.LogWarning("Migration failed. Database might not be ready. Retrying in 5 seconds... Error: {Message}", ex.Message);
-            Thread.Sleep(5000);
+            logger.LogWarning("Background: Migration failed. Retrying in 10 seconds... Error: {Message}", ex.Message);
+            await Task.Delay(10000);
         }
     }
-
-    DbInitializer.Initialize(context, seedOptions, logger);
-    DbInitializer.MigratePasswordHashes(context, logger);
-}
+});
 
 // On Render/Docker, HTTPS redirection is usually handled by the proxy.
 // Only use it if not behind a proxy or if specifically needed.
