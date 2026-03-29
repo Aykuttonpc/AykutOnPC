@@ -14,16 +14,23 @@ public class GitHubService : IGitHubService
     private const string CacheKeyPrefix = "github_repos_";
     private static readonly TimeSpan CacheDuration = TimeSpan.FromMinutes(10);
 
-    public GitHubService(HttpClient httpClient, IMemoryCache cache, ILogger<GitHubService> logger)
+    public GitHubService(HttpClient httpClient, IMemoryCache cache, ILogger<GitHubService> logger, IConfiguration configuration)
     {
         _httpClient = httpClient;
         _cache = cache;
         _logger = logger;
 
-        // Set User-Agent once in constructor, not per-request
+        // Set User-Agent (Required by GitHub API)
         if (!_httpClient.DefaultRequestHeaders.UserAgent.Any())
         {
             _httpClient.DefaultRequestHeaders.UserAgent.ParseAdd("AykutOnPC-App/1.0");
+        }
+
+        // Add Personal Access Token if provided to increase rate limit (from 60 to 5000 requests/hr)
+        var token = configuration["GITHUB_TOKEN"];
+        if (!string.IsNullOrEmpty(token))
+        {
+            _httpClient.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
         }
     }
 
