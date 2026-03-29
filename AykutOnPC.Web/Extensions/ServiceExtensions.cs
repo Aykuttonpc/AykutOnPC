@@ -98,8 +98,11 @@ public static class ServiceExtensions
                 configuration.GetConnectionString("DefaultConnection"),
                 sqlOptions =>
                 {
-                    sqlOptions.EnableRetryOnFailure(maxRetryCount: 3);
-                    sqlOptions.CommandTimeout(30);
+                    sqlOptions.EnableRetryOnFailure(
+                        maxRetryCount: 5,
+                        maxRetryDelay: TimeSpan.FromSeconds(10),
+                        errorCodesToAdd: null);
+                    sqlOptions.CommandTimeout(90); // Increased timeout for high-latency cloud DBs
                 }));
 
         return services;

@@ -3,6 +3,8 @@ using AykutOnPC.Infrastructure.Data;
 using AykutOnPC.Web.Extensions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
+using Microsoft.AspNetCore.DataProtection;
+using System.IO;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -26,6 +28,12 @@ builder.Services.AddMemoryCache();
 // ──────────────────────────────────────────────
 builder.Services.AddJwtAuthentication(builder.Configuration);
 builder.Services.AddAuthorization();
+
+// Fix for Render/Docker: Persist keys to an ephemeral directory to avoid 500 errors on Login/Forms
+builder.Services.AddDataProtection()
+    .PersistKeysToFileSystem(new DirectoryInfo("/app/keys"))
+    .SetApplicationName("AykutOnPC");
+
 
 // ──────────────────────────────────────────────
 // 5. Application Services (DI)
