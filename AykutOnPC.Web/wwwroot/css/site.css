@@ -586,8 +586,8 @@ body {
     background: var(--bg-dark);
 }
 
-/* Make body transparent so particles show */
-body {
+/* Make body transparent so particles show (only when particles layer exists) */
+body:has(#particles-js) {
     background-color: transparent !important;
 }
 
