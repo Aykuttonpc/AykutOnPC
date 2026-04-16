@@ -11,6 +11,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     public DbSet<Experience> Experiences { get; set; }
     public DbSet<Education> Educations { get; set; }
     public DbSet<Profile> Profiles { get; set; }
+    public DbSet<PageView> PageViews { get; set; }
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
@@ -22,11 +23,20 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             entity.HasKey(e => e.Id);
             entity.Property(e => e.Name).IsRequired().HasMaxLength(100);
         });
-        
+
         modelBuilder.Entity<KnowledgeEntry>(entity =>
         {
              entity.HasKey(e => e.Id);
              entity.Property(e => e.Topic).HasMaxLength(200);
+        });
+
+        modelBuilder.Entity<PageView>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            // Composite index for dashboard queries: date range + path lookups
+            entity.HasIndex(e => e.VisitedAtUtc).HasDatabaseName("IX_PageViews_VisitedAtUtc");
+            entity.HasIndex(e => new { e.VisitedAtUtc, e.Path }).HasDatabaseName("IX_PageViews_VisitedAtUtc_Path");
+            entity.HasIndex(e => e.HashedIp).HasDatabaseName("IX_PageViews_HashedIp");
         });
     }
 }
