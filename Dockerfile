@@ -21,12 +21,24 @@ RUN dotnet publish "AykutOnPC.Web.csproj" -c Release -o /app/publish /p:UseAppHo
 # Use the ASP.NET Core runtime image to run the app
 FROM mcr.microsoft.com/dotnet/aspnet:9.0 AS final
 WORKDIR /app
-RUN mkdir -p /app/keys
+
+# Create a non-root user and group for security
+RUN groupadd -r appgroup && useradd -r -g appgroup -s /sbin/nologin appuser
+
+# Create the keys directory and set ownership
+RUN mkdir -p /app/keys && chown -R appuser:appgroup /app/keys
+
 COPY --from=build /app/publish .
+
+# Ensure the app directory is owned by the non-root user
+RUN chown -R appuser:appgroup /app
 
 # Expose ports
 EXPOSE 8080
 EXPOSE 8081
+
+# Switch to the non-root user
+USER appuser
 
 # Start the application
 ENTRYPOINT ["dotnet", "AykutOnPC.Web.dll"]
