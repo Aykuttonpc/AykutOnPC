@@ -33,6 +33,8 @@ bld/
 .context/
 # Visual Studio Code items
 .vscode/
+# Claude Code local state
+.claude/
 
 # SpecFlow specific
 *.feature.cs
@@ -61,10 +63,20 @@ thumbs.db
 .DS_Store
 .env
 
-# Build artifacts and logs
+# Build artifacts and IDE output logs — never commit these
+build_output.txt
+build_errors.txt
 build_error_log.txt
 build_error.log
 build_log.txt
 build_warnings.log
 pkg_log.txt
 mcp-cursor-executed.txt
+
+
+# Production secrets — NEVER commit
+.env.prod
+backups/
+
+# Let's Encrypt (managed on server, not in repo)
+/etc/letsencrypt/
