@@ -11,9 +11,10 @@ using System.Text;
 
 namespace AykutOnPC.Infrastructure.Services;
 
-public class AuthService(AppDbContext context, IOptions<JwtSettings> jwtOptions) : IAuthService
+public class AuthService(AppDbContext context, IOptions<JwtSettings> jwtOptions, IOptions<SecuritySettings> securityOptions) : IAuthService
 {
     private readonly JwtSettings _jwtSettings = jwtOptions.Value;
+    private readonly SecuritySettings _securitySettings = securityOptions.Value;
 
     public async Task<User?> ValidateCredentialsAsync(string username, string password, CancellationToken cancellationToken = default)
     {
@@ -35,7 +36,7 @@ public class AuthService(AppDbContext context, IOptions<JwtSettings> jwtOptions)
         var user = new User
         {
             Username = username,
-            PasswordHash = BCrypt.Net.BCrypt.HashPassword(password, workFactor: 12),
+            PasswordHash = BCrypt.Net.BCrypt.HashPassword(password, workFactor: _securitySettings.BCryptWorkFactor),
             Role = userRole
         };
 
@@ -44,7 +45,7 @@ public class AuthService(AppDbContext context, IOptions<JwtSettings> jwtOptions)
         return user;
     }
 
-    public string GenerateJwtToken(User user, string role = null)
+    public string GenerateJwtToken(User user, string? role = null)
     {
         var finalRole = role ?? user.Role;
         var claims = new List<Claim>

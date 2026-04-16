@@ -4,6 +4,8 @@ using AykutOnPC.Core.Entities;
 using AykutOnPC.Core.Interfaces;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging;
+using AykutOnPC.Core.Configuration;
+using Microsoft.Extensions.Options;
 
 namespace AykutOnPC.Infrastructure.Services;
 
@@ -12,26 +14,26 @@ public class GitHubService : IGitHubService
     private readonly HttpClient _httpClient;
     private readonly IMemoryCache _cache;
     private readonly ILogger<GitHubService> _logger;
+    private readonly GitHubSettings _settings;
     private const string CacheKeyPrefix = "github_repos_";
-    private static readonly TimeSpan CacheDuration = TimeSpan.FromMinutes(10);
 
-    public GitHubService(HttpClient httpClient, IMemoryCache cache, ILogger<GitHubService> logger, IConfiguration configuration)
+    public GitHubService(HttpClient httpClient, IMemoryCache cache, ILogger<GitHubService> logger, IOptions<GitHubSettings> settings)
     {
         _httpClient = httpClient;
         _cache = cache;
         _logger = logger;
+        _settings = settings.Value;
 
-        // Set User-Agent (Required by GitHub API)
+        _httpClient.BaseAddress = new Uri(_settings.ApiUrl);
+
         if (!_httpClient.DefaultRequestHeaders.UserAgent.Any())
         {
-            _httpClient.DefaultRequestHeaders.UserAgent.ParseAdd("AykutOnPC-App/1.0");
+            _httpClient.DefaultRequestHeaders.UserAgent.ParseAdd(_settings.UserAgent);
         }
 
-        // Add Personal Access Token if provided to increase rate limit (from 60 to 5000 requests/hr)
-        var token = configuration["GITHUB_TOKEN"];
-        if (!string.IsNullOrEmpty(token))
+        if (!string.IsNullOrEmpty(_settings.Token))
         {
-            _httpClient.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
+            _httpClient.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", _settings.Token);
         }
     }
 
@@ -47,7 +49,7 @@ public class GitHubService : IGitHubService
         try
         {
             var repos = await _httpClient.GetFromJsonAsync<List<GitHubRepoDto>>(
-                $"https://api.github.com/users/{Uri.EscapeDataString(username)}/repos?sort=updated&per_page=100",
+                $"/users/{Uri.EscapeDataString(username)}/repos?sort=updated&per_page=100",
                 cancellationToken);
 
             if (repos is null)
@@ -56,30 +58,29 @@ public class GitHubService : IGitHubService
                 return Enumerable.Empty<Build>();
             }
 
-            var builds = repos.Select(r => new Build(
-                r.Name ?? "Unnamed",
-                r.Description ?? "No description available.",
-                r.Language ?? "Unknown")
+            var builds = repos.Select(r => new Build
             {
-                RepoUrl = r.HtmlUrl,
-                CreatedAt = r.CreatedAt,
-                LiveUrl = r.Homepage
+                Title       = r.Name        ?? "Unnamed",
+                Description = r.Description ?? "No description available.",
+                TechStack   = r.Language    ?? "Unknown",
+                RepoUrl     = r.HtmlUrl,
+                LiveUrl     = r.Homepage,
+                CreatedAt   = r.CreatedAt
             }).ToList();
 
-            _cache.Set(cacheKey, (IEnumerable<Build>)builds, CacheDuration);
+            _cache.Set(cacheKey, (IEnumerable<Build>)builds, TimeSpan.FromMinutes(_settings.CacheDurationMinutes));
             return builds;
         }
         catch (HttpRequestException ex)
         {
-            _logger.LogWarning(ex, "Failed to fetch GitHub repositories for user '{Username}'. (Rate Limited or Network issue)", username);
-            // Cache the failure for 1 hour to avoid hammering the API
-            _cache.Set(cacheKey, Enumerable.Empty<Build>(), TimeSpan.FromHours(1));
+            _logger.LogWarning(ex, "Failed to fetch GitHub repositories for user '{Username}'.", username);
+            _cache.Set(cacheKey, Enumerable.Empty<Build>(), TimeSpan.FromHours(_settings.ErrorCacheDurationHours));
             return Enumerable.Empty<Build>();
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Unexpected error fetching GitHub repositories for user '{Username}'.", username);
-            _cache.Set(cacheKey, Enumerable.Empty<Build>(), TimeSpan.FromMinutes(5));
+            _cache.Set(cacheKey, Enumerable.Empty<Build>(), TimeSpan.FromMinutes(_settings.CacheDurationMinutes / 2));
             return Enumerable.Empty<Build>();
         }
     }

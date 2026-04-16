@@ -10,49 +10,42 @@ using System.Text;
 
 namespace AykutOnPC.Infrastructure.Services;
 
-public class GeminiService : IAIService
+public class AiService : IAiService
 {
     private readonly AppDbContext _context;
-    private readonly ILogger<GeminiService> _logger;
+    private readonly ILogger<AiService> _logger;
     private readonly Kernel _kernel;
-    private readonly GeminiSettings _settings;
+    private readonly AiSettings _settings;
 
-    public GeminiService(
+    public AiService(
         AppDbContext context,
         Kernel kernel,
-        IOptions<GeminiSettings> geminiOptions,
-        ILogger<GeminiService> logger)
+        IOptions<AiSettings> aiOptions,
+        ILogger<AiService> logger)
     {
-        _context = context;
-        _kernel = kernel;
-        _logger = logger;
-        _settings = geminiOptions.Value;
+        _context  = context;
+        _kernel   = kernel;
+        _logger   = logger;
+        _settings = aiOptions.Value;
 
         if (string.IsNullOrWhiteSpace(_settings.ApiKey))
-        {
-            _logger.LogWarning("Gemini/Groq API Key is not configured. AI chat will not function.");
-        }
+            _logger.LogWarning("AI API key is not configured. Chat will not function.");
     }
 
     public async Task<string> GetAnswerAsync(string userMessage, CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(_settings.ApiKey))
-        {
-            return "AI service is not configured. Please set the API key.";
-        }
+            return _settings.ErrorMessages.ApiNotConfigured;
 
         try
         {
-            // 1. Build RAG context from knowledge base
             var knowledgeEntries = await _context.KnowledgeEntries
                 .AsNoTracking()
-                .Take(50) 
+                .Take(_settings.ContextLimit)
                 .ToListAsync(cancellationToken);
 
             var contextBuilder = new StringBuilder();
-            contextBuilder.AppendLine("You are an AI assistant for a portfolio website called 'AykutOnPC'.");
-            contextBuilder.AppendLine("Answer questions based strictly on the following context. If the answer is not in the context, be polite and say you don't know, but you can take a note.");
-            contextBuilder.AppendLine("Keep answers concise, professional, yet friendly. Provide your answers in Turkish unless the user speaks English.");
+            contextBuilder.AppendLine(_settings.SystemPrompt);
             contextBuilder.AppendLine("\n--- CONTEXT START ---");
 
             foreach (var entry in knowledgeEntries)
@@ -63,9 +56,7 @@ public class GeminiService : IAIService
             }
             contextBuilder.AppendLine("--- CONTEXT END ---\n");
 
-            // 2. Use Semantic Kernel Chat Completion natively
             var chatService = _kernel.GetRequiredService<IChatCompletionService>();
-
             var chatHistory = new ChatHistory();
             chatHistory.AddSystemMessage(contextBuilder.ToString());
             chatHistory.AddUserMessage(userMessage);
@@ -74,17 +65,19 @@ public class GeminiService : IAIService
                 chatHistory,
                 cancellationToken: cancellationToken);
 
-            return response.Content ?? "I understood your question, but I have no words to express the answer.";
+            return response.Content ?? _settings.ErrorMessages.EmptyResponse;
         }
-        catch (Exception ex) when (ex.Message.Contains("429"))
+        catch (Exception ex) when (ex.Message.Contains("429") || ex.InnerException?.Message.Contains("429") == true)
         {
             _logger.LogWarning("AI API rate limit hit.");
-            return "Kısa bir süre için çok meşgulüm (Rate Limit). Lütfen birazdan tekrar dene.";
+            return _settings.ErrorMessages.RateLimitHit;
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error occurred while getting AI response: {Message}", ex.Message);
-            return "Kısa süreli bir iletişim sorunu yaşıyorum. Lütfen daha sonra tekrar dene.";
+            _logger.LogError(ex,
+                "AI response failed. Type={ExType} | Message={Message} | Inner={Inner}",
+                ex.GetType().Name, ex.Message, ex.InnerException?.Message);
+            return _settings.ErrorMessages.GeneralError;
         }
     }
 }

@@ -8,7 +8,7 @@ namespace AykutOnPC.Web.Controllers;
 [Route("api/[controller]")]
 [ApiController]
 [EnableRateLimiting("ChatApiPolicy")]
-public class ChatController(IAIService aiService) : ControllerBase
+public class ChatController(IAiService aiService) : ControllerBase
 {
     [HttpPost("ask")]
     public async Task<IActionResult> Ask([FromBody] ChatRequestDto request, CancellationToken cancellationToken)

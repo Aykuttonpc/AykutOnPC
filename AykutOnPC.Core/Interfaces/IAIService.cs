@@ -1,6 +1,6 @@
 namespace AykutOnPC.Core.Interfaces;
 
-public interface IAIService
+public interface IAiService
 {
     Task<string> GetAnswerAsync(string userMessage, CancellationToken cancellationToken = default);
 }
