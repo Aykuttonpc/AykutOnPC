@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk.Web">
+﻿<Project Sdk="Microsoft.NET.Sdk.Web">
 
   <ItemGroup>
     <ProjectReference Include="..\AykutOnPC.Core\AykutOnPC.Core.csproj" />
@@ -19,6 +19,7 @@
     <TargetFramework>net9.0</TargetFramework>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
+    <UserSecretsId>4ea72cfc-a1aa-4706-88c4-51f520bb93c1</UserSecretsId>
   </PropertyGroup>
 
 </Project>

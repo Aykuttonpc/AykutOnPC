@@ -1,9 +1,11 @@
 using AykutOnPC.Core.Configuration;
 using AykutOnPC.Infrastructure.Data;
+using AykutOnPC.Web.Commands;
 using AykutOnPC.Web.Extensions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using Microsoft.AspNetCore.DataProtection;
+using Microsoft.Extensions.Configuration;
 using System.IO;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -30,9 +32,10 @@ builder.Services.AddJwtAuthentication(builder.Configuration);
 builder.Services.AddAuthorization();
 
 // Fix for Render/Docker: Persist keys to an ephemeral directory to avoid 500 errors on Login/Forms
+var securitySettings = builder.Configuration.GetSection(SecuritySettings.SectionName).Get<SecuritySettings>() ?? new SecuritySettings();
 builder.Services.AddDataProtection()
-    .PersistKeysToFileSystem(new DirectoryInfo("/app/keys"))
-    .SetApplicationName("AykutOnPC");
+    .PersistKeysToFileSystem(new DirectoryInfo(securitySettings.DataProtectionPath))
+    .SetApplicationName(securitySettings.ApplicationName);
 
 
 // ──────────────────────────────────────────────
@@ -54,6 +57,17 @@ builder.Services.AddAppExceptionHandling();
 builder.Services.AddAppHealthChecks();
 
 var app = builder.Build();
+
+// ──────────────────────────────────────────────
+// CLI Commands (run-and-exit, no web host)
+// Usage: dotnet AykutOnPC.Web.dll --seed-admin
+// ──────────────────────────────────────────────
+if (args.Contains(SeedAdminCommand.ArgFlag))
+{
+    var seedLogger = app.Services.GetRequiredService<ILoggerFactory>().CreateLogger("SeedAdmin");
+    Environment.ExitCode = await SeedAdminCommand.RunAsync(app.Services, seedLogger);
+    return;
+}
 
 // ──────────────────────────────────────────────
 // Middleware Pipeline
@@ -93,9 +107,6 @@ _ = Task.Run(async () =>
             await context.Database.MigrateAsync();
             migrationSucceeded = true;
             logger.LogInformation("Background: Migrations applied successfully.");
-            
-            DbInitializer.Initialize(context, seedOptions, logger);
-            DbInitializer.MigratePasswordHashes(context, logger);
         }
         catch (Exception ex)
         {
@@ -119,6 +130,9 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseRouting();
+
+// Visitor Intelligence — server-side, cookie-free, GDPR-safe page tracking
+app.UseMiddleware<AykutOnPC.Web.Infrastructure.VisitorTrackingMiddleware>();
 
 app.UseCors("DefaultPolicy");
 app.UseRateLimiter();
