@@ -47,9 +47,31 @@
         }
     </div>
 
-    <div style="margin-top: 2rem;" data-aos="fade-up" data-aos-delay="200">
-        <a href="#about" class="btn-primary cyber-btn" style="margin-right: 1rem;">About Me</a>
-        <a href="#contact" class="btn-primary cyber-btn">Contact</a>
+    <div style="margin-top: 2rem; display: flex; gap: 1rem; flex-wrap: wrap; justify-content: center;" data-aos="fade-up" data-aos-delay="200">
+        @{
+            var hireEmail   = string.IsNullOrEmpty(Model.UserProfile.Email) ? "aykutcincik@ogr.eskisehir.edu.tr" : Model.UserProfile.Email;
+            var hireSubject = Uri.EscapeDataString("Hi Aykut — Let's work together");
+            var hireBody    = Uri.EscapeDataString("Hi Aykut,\n\nI saw your portfolio and would like to discuss an opportunity with you.\n\n");
+        }
+        <a href="mailto:@(hireEmail)?subject=@hireSubject&body=@hireBody"
+           class="btn-primary cyber-btn cta-hire"
+           style="font-weight: 600;">
+            <i class="fa-solid fa-handshake" style="margin-right: 0.5rem;"></i>Hire Me
+        </a>
+
+        @if (!string.IsNullOrEmpty(Model.UserProfile.LinkedInUrl))
+        {
+            <a href="@Model.UserProfile.LinkedInUrl" target="_blank" rel="noopener"
+               class="btn-primary cyber-btn cta-resume"
+               style="background: transparent; border: 1px solid var(--secondary); color: var(--secondary);">
+                <i class="fa-solid fa-file-lines" style="margin-right: 0.5rem;"></i>View Resume
+            </a>
+        }
+
+        <a href="#about" class="btn-primary cyber-btn cta-about"
+           style="background: transparent; border: 1px solid rgba(255,255,255,0.15); color: var(--text-muted);">
+            About Me
+        </a>
     </div>
 </div>
 
@@ -165,12 +187,12 @@
                     var build = builds[i];
                     <a href="@build.RepoUrl" target="_blank" class="card build-item" data-aos="fade-up" data-tilt data-tilt-scale="1.05"
                        style="text-decoration: none; cursor: pointer; transition: transform 0.2s; @(i >= 6 ? "display: none;" : "")">
-                        
+
                         <div style="display: flex; justify-content: space-between; align-items: start;">
                             <h3>@build.Title</h3>
                             <i class="fa-brands fa-github" style="opacity: 0.5;"></i>
                         </div>
-                        
+
                         <p style="display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden;">
                             @build.Description
                         </p>
@@ -186,8 +208,56 @@
                     </a>
                 }
             }
+            else
+            {
+                @* Loading skeleton — shown when GitHub API is unreachable, rate-limited, or DB is empty.
+                   Renders 6 placeholder cards with a shimmer animation so the section never looks broken. *@
+                for (int i = 0; i < 6; i++)
+                {
+                    <div class="card build-skeleton" aria-hidden="true">
+                        <div style="display: flex; justify-content: space-between; align-items: start;">
+                            <div class="skeleton-line" style="width: 60%; height: 1.4rem;"></div>
+                            <div class="skeleton-line" style="width: 1.2rem; height: 1.2rem; border-radius: 50%;"></div>
+                        </div>
+                        <div class="skeleton-line" style="width: 100%; height: 0.9rem; margin-top: 1rem;"></div>
+                        <div class="skeleton-line" style="width: 95%;  height: 0.9rem; margin-top: 0.5rem;"></div>
+                        <div class="skeleton-line" style="width: 70%;  height: 0.9rem; margin-top: 0.5rem;"></div>
+                        <div style="margin-top: 1rem; display: flex; gap: 0.5rem; flex-wrap: wrap;">
+                            <div class="skeleton-line" style="width: 3rem; height: 1.2rem;"></div>
+                            <div class="skeleton-line" style="width: 4rem; height: 1.2rem;"></div>
+                            <div class="skeleton-line" style="width: 3.5rem; height: 1.2rem;"></div>
+                        </div>
+                    </div>
+                }
+                <div style="grid-column: 1 / -1; text-align: center; color: var(--text-muted); font-size: 0.9rem; margin-top: 0.5rem;">
+                    <i class="fa-solid fa-circle-notch fa-spin" style="margin-right: 0.5rem;"></i>
+                    Fetching latest builds from GitHub…
+                </div>
+            }
         </div>
     </div>
+
+    <style>
+        .build-skeleton {
+            cursor: default;
+            pointer-events: none;
+            opacity: 0.85;
+        }
+        .skeleton-line {
+            display: block;
+            background: linear-gradient(90deg,
+                rgba(255,255,255,0.04) 0%,
+                rgba(255,255,255,0.10) 50%,
+                rgba(255,255,255,0.04) 100%);
+            background-size: 200% 100%;
+            border-radius: 6px;
+            animation: skeleton-shimmer 1.6s ease-in-out infinite;
+        }
+        @@keyframes skeleton-shimmer {
+            0%   { background-position:  200% 0; }
+            100% { background-position: -200% 0; }
+        }
+    </style>
 
     <!-- Client-side Pagination Controls -->
     <div id="pagination-controls" style="display: flex; justify-content: center; gap: 1rem; margin-bottom: 4rem; margin-top: 2rem;">
