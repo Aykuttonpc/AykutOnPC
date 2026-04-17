@@ -36,7 +36,15 @@
     </main>
 
     <footer style="text-align: center; padding: 2rem; color: var(--text-muted); opacity: 0.5;">
-        &copy; 2026 AykutOnPC. Powered by .NET 9 & AI. | <a asp-controller="Admin" asp-action="Index" style="color: var(--text-muted); text-decoration: none;">Admin</a>
+        &copy; 2026 AykutOnPC. Powered by .NET 9 & AI.
+        <a asp-controller="Admin" asp-action="Index"
+           title="Admin"
+           aria-label="Admin"
+           style="color: var(--text-muted); text-decoration: none; margin-left: 0.6rem; transition: color 0.2s, opacity 0.2s;"
+           onmouseover="this.style.color='var(--secondary)'; this.style.opacity='1';"
+           onmouseout="this.style.color='var(--text-muted)'; this.style.opacity='';">
+            <i class="fa-solid fa-user-shield"></i>
+        </a>
     </footer>
 
     <partial name="_AIWidget" />
