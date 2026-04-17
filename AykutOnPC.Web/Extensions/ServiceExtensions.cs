@@ -3,6 +3,7 @@ using AykutOnPC.Core.Interfaces;
 using AykutOnPC.Infrastructure.Data;
 using AykutOnPC.Infrastructure.HttpHandlers;
 using AykutOnPC.Infrastructure.Services;
+using AykutOnPC.Web.Infrastructure;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
@@ -234,7 +235,8 @@ public static class ServiceExtensions
     public static IServiceCollection AddAppHealthChecks(this IServiceCollection services)
     {
         services.AddHealthChecks()
-            .AddDbContextCheck<AppDbContext>("database");
+            .AddDbContextCheck<AppDbContext>("database")
+            .AddCheck<RedisHealthCheck>("redis", tags: new[] { "cache" });
         return services;
     }
 }

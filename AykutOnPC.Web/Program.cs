@@ -5,8 +5,10 @@ using AykutOnPC.Web.Extensions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using Microsoft.AspNetCore.DataProtection;
+using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Configuration;
 using System.IO;
+using System.Text.Json;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -150,6 +152,27 @@ app.MapControllerRoute(
 // Rate limit the Chat API endpoint
 app.MapControllers().RequireRateLimiting("GeneralApiPolicy");
 
-app.MapHealthChecks("/health");
+app.MapHealthChecks("/health", new HealthCheckOptions
+{
+    ResponseWriter = async (context, report) =>
+    {
+        context.Response.ContentType = "application/json; charset=utf-8";
+        var payload = new
+        {
+            status          = report.Status.ToString(),
+            totalDurationMs = report.TotalDuration.TotalMilliseconds,
+            checks = report.Entries.Select(e => new
+            {
+                name        = e.Key,
+                status      = e.Value.Status.ToString(),
+                description = e.Value.Description,
+                durationMs  = e.Value.Duration.TotalMilliseconds,
+                tags        = e.Value.Tags
+            })
+        };
+        await context.Response.WriteAsync(JsonSerializer.Serialize(payload,
+            new JsonSerializerOptions { WriteIndented = false }));
+    }
+});
 
 app.Run();
