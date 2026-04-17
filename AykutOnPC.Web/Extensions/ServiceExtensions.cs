@@ -3,7 +3,6 @@ using AykutOnPC.Core.Interfaces;
 using AykutOnPC.Infrastructure.Data;
 using AykutOnPC.Infrastructure.HttpHandlers;
 using AykutOnPC.Infrastructure.Services;
-using AykutOnPC.Web.Infrastructure;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
@@ -206,6 +205,19 @@ public static class ServiceExtensions
                 o.Window                  = TimeSpan.FromMinutes(1);
                 o.QueueProcessingOrder    = QueueProcessingOrder.OldestFirst;
                 o.QueueLimit              = 5;
+            });
+
+            // Login: per-IP brute force protection. 5 attempts per minute per remote IP.
+            options.AddPolicy("LoginPolicy", httpContext =>
+            {
+                var key = httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown";
+                return RateLimitPartition.GetFixedWindowLimiter(key, _ => new FixedWindowRateLimiterOptions
+                {
+                    PermitLimit          = 5,
+                    Window               = TimeSpan.FromMinutes(1),
+                    QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
+                    QueueLimit           = 0
+                });
             });
         });
 

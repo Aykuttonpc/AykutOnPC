@@ -60,10 +60,17 @@
             </div>
         }
 
-        <form method="post">
+        <form method="post" autocomplete="off">
             @Html.AntiForgeryToken()
             <input type="text" name="username" class="login-input" placeholder="Identity" required autocomplete="off" />
-            <input type="password" name="password" class="login-input" placeholder="Passkey" required />
+            <input type="password" name="password" class="login-input" placeholder="Passkey" required autocomplete="new-password" />
+
+            @* Honeypot — invisible to humans, irresistible to bots. Server silently rejects any non-empty value. *@
+            <div aria-hidden="true" style="position: absolute; left: -10000px; top: auto; width: 1px; height: 1px; overflow: hidden;">
+                <label for="aop_website">Leave this field empty</label>
+                <input type="text" id="aop_website" name="Website" tabindex="-1" autocomplete="off" />
+            </div>
+
             <button type="submit" class="btn-primary" style="width: 100%; margin-top: 1rem;">Initialize Session</button>
         </form>
     </div>
