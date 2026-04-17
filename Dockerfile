@@ -22,6 +22,11 @@ RUN dotnet publish "AykutOnPC.Web.csproj" -c Release -o /app/publish /p:UseAppHo
 FROM mcr.microsoft.com/dotnet/aspnet:9.0 AS final
 WORKDIR /app
 
+# curl is needed for the container HEALTHCHECK probing /health
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends curl \
+ && rm -rf /var/lib/apt/lists/*
+
 # Create a non-root user and group for security
 RUN groupadd -r appgroup && useradd -r -g appgroup -s /sbin/nologin appuser
 
