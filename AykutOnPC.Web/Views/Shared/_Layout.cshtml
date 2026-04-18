@@ -1,20 +1,56 @@
 <!DOCTYPE html>
+@{
+    var pageTitle       = (ViewData["Title"] as string) ?? "AykutOnPC";
+    var siteTitle       = "AykutOnPC";
+    var fullTitle       = $"{pageTitle} - {siteTitle}";
+    var metaDescription = (ViewData["MetaDescription"] as string)
+        ?? "AykutOnPC — .NET 9 portfolio of Aykut Çinçik featuring AI chat, real-time analytics and modern cyberpunk design.";
+    var metaImage       = (ViewData["MetaImage"] as string) ?? Url.Content("~/images/og-cover.png");
+    var canonicalUrl    = $"{Context.Request.Scheme}://{Context.Request.Host}{Context.Request.Path}";
+    var ogType          = (ViewData["OgType"] as string) ?? "website";
+}
 <html lang="en">
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>@ViewData["Title"] - AykutOnPC</title>
-    
+    <title>@fullTitle</title>
+
+    <!-- SEO -->
+    <meta name="description" content="@metaDescription" />
+    <meta name="author" content="Aykut Çinçik" />
+    <meta name="theme-color" content="#0a0a0f" />
+    <link rel="canonical" href="@canonicalUrl" />
+
+    <!-- Open Graph -->
+    <meta property="og:site_name"   content="@siteTitle" />
+    <meta property="og:title"       content="@fullTitle" />
+    <meta property="og:description" content="@metaDescription" />
+    <meta property="og:type"        content="@ogType" />
+    <meta property="og:url"         content="@canonicalUrl" />
+    <meta property="og:image"       content="@metaImage" />
+    <meta property="og:image:alt"   content="@siteTitle preview" />
+    <meta property="og:locale"      content="en_US" />
+
+    <!-- Twitter Cards -->
+    <meta name="twitter:card"        content="summary_large_image" />
+    <meta name="twitter:title"       content="@fullTitle" />
+    <meta name="twitter:description" content="@metaDescription" />
+    <meta name="twitter:image"       content="@metaImage" />
+
     <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&display=swap" rel="stylesheet">
-    
-    <!-- Icons -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 
-    <!-- AOS CSS -->
-    <link href="https://unpkg.com/aos@2.3.1/dist/aos.css" rel="stylesheet">
+    <!-- Icons (SRI pinned to font-awesome 6.4.0) -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
+          integrity="sha384-iw3OoTErCYJJB9mCa8LNS2hbsQ7M3C0EpIsO/H5+EGAkPGc6rk+V8i04oW/K5xq0"
+          crossorigin="anonymous" referrerpolicy="no-referrer">
+
+    <!-- AOS CSS (SRI pinned to aos 2.3.1) -->
+    <link rel="stylesheet" href="https://unpkg.com/aos@2.3.1/dist/aos.css"
+          integrity="sha384-/rJKQnzOkEo+daG0jMjU1IwwY9unxt1NBw3Ef2fmOJ3PW/TfAg2KXVoWwMZQZtw9"
+          crossorigin="anonymous">
 
     <!-- Styles -->
     <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
@@ -50,11 +86,19 @@
     <partial name="_AIWidget" />
 
     <script src="~/lib/jquery/dist/jquery.min.js"></script>
-    <!-- Cyberpunk UI Scripts -->
-    <script src="https://cdn.jsdelivr.net/particles.js/2.0.0/particles.min.js"></script>
-    <script src="https://unpkg.com/aos@2.3.1/dist/aos.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/howler/2.2.3/howler.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/vanilla-tilt/1.8.0/vanilla-tilt.min.js"></script>
+    <!-- Cyberpunk UI Scripts (SRI pinned per file) -->
+    <script src="https://cdn.jsdelivr.net/particles.js/2.0.0/particles.min.js"
+            integrity="sha384-d+UOwmNNIC7V4izkTAKSXzWhjC2GxiS9PTykO1XdOPC3nc2z65UOS7SP6QdKPA70"
+            crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <script src="https://unpkg.com/aos@2.3.1/dist/aos.js"
+            integrity="sha384-wziAfh6b/qT+3LrqebF9WeK4+J5sehS6FA10J1t3a866kJ/fvU5UwofWnQyzLtwu"
+            crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/howler/2.2.3/howler.min.js"
+            integrity="sha384-46Oo18A61vfMErbleKnm7no+MU4xWkCYAHfFjdeBgYnq5437neF0hgpBaX/YM8fu"
+            crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/vanilla-tilt/1.8.0/vanilla-tilt.min.js"
+            integrity="sha384-QQEAefmew0Un2GyadO5GSPVijOMu9zSE/p+OM1WgLr8sQp9f5ZXokako48B7Ytiw"
+            crossorigin="anonymous" referrerpolicy="no-referrer"></script>
 
     <script src="~/js/site.js" asp-append-version="true"></script>
     <script>
@@ -69,44 +113,100 @@
                 $('#ai-widget-container').removeClass('active');
             });
 
-            // Send Message Logic
+            // Send Message Logic — Server-Sent Events streaming.
+            // The backend pushes "data: {\"t\":\"<chunk>\"}\n\n" per token, then "event: done\n\n".
+            // We render token-by-token for ChatGPT-style typing UX. Falls back to /api/chat/ask
+            // (single-shot JSON) if the browser blocks streaming or the network disconnects early.
             async function sendMessage() {
                 var input = $('#ai-input');
                 var message = input.val().trim();
                 var btn = $('#ai-send-btn');
-                
+
                 if(!message) return;
 
-                // UI Updates
                 input.val('');
                 input.prop('disabled', true);
                 btn.prop('disabled', true);
-                
+
                 var container = $('#ai-messages');
                 container.append(`<div class="message user-message">${escapeHtml(message)}</div>`);
                 scrollToBottom();
 
-                // Show typing indicator (optional placeholder)
-                var loadingId = 'loading-' + Date.now();
-                container.append(`<div id="${loadingId}" class="message ai-message"><i class="fa-solid fa-ellipsis fa-fade"></i></div>`);
+                // Placeholder bubble — fills in as tokens stream.
+                var bubbleId = 'ai-' + Date.now();
+                container.append(
+                    `<div id="${bubbleId}" class="message ai-message" data-raw="">` +
+                    `<i class="fa-solid fa-ellipsis fa-fade"></i></div>`
+                );
                 scrollToBottom();
+                var $bubble = $(`#${bubbleId}`);
+
+                let fullText = '';
+                let receivedAny = false;
 
                 try {
-                    const response = await fetch('/api/chat/ask', {
+                    const response = await fetch('/api/chat/stream', {
                         method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json'
-                        },
+                        headers: { 'Content-Type': 'application/json', 'Accept': 'text/event-stream' },
                         body: JSON.stringify({ message: message })
                     });
-                    
-                    const data = await response.json();
-                    
-                    $(`#${loadingId}`).remove();
-                    container.append(`<div class="message ai-message">${linkify(data.response)}</div>`);
-                } catch (error) {
-                    $(`#${loadingId}`).remove();
-                    container.append(`<div class="message ai-message" style="color: #ef4444;">Connection error. Try again.</div>`);
+
+                    if (!response.ok || !response.body) throw new Error('stream-unavailable');
+
+                    const reader = response.body.getReader();
+                    const decoder = new TextDecoder('utf-8');
+                    let buffer = '';
+
+                    // Drain the stream — SSE events are delimited by a blank line ("\n\n").
+                    while (true) {
+                        const { value, done } = await reader.read();
+                        if (done) break;
+                        buffer += decoder.decode(value, { stream: true });
+
+                        let sep;
+                        while ((sep = buffer.indexOf('\n\n')) !== -1) {
+                            const rawEvent = buffer.slice(0, sep);
+                            buffer = buffer.slice(sep + 2);
+
+                            if (rawEvent.startsWith('event: done')) {
+                                buffer = '';
+                                break;
+                            }
+                            const dataLine = rawEvent.split('\n').find(l => l.startsWith('data: '));
+                            if (!dataLine) continue;
+                            try {
+                                const payload = JSON.parse(dataLine.slice(6));
+                                if (payload.t) {
+                                    if (!receivedAny) {
+                                        $bubble.empty();          // remove the typing dots
+                                        receivedAny = true;
+                                    }
+                                    fullText += payload.t;
+                                    $bubble.attr('data-raw', fullText);
+                                    $bubble.html(linkify(escapeHtml(fullText)));
+                                    scrollToBottom();
+                                }
+                            } catch (e) { /* ignore malformed event */ }
+                        }
+                    }
+
+                    if (!receivedAny) throw new Error('empty-stream');
+                } catch (streamError) {
+                    // Fallback: non-streaming endpoint. Keeps the widget functional behind
+                    // proxies/firewalls that strip SSE or when the model itself errors out.
+                    try {
+                        const fallback = await fetch('/api/chat/ask', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ message: message })
+                        });
+                        const data = await fallback.json();
+                        $bubble.empty().html(linkify(escapeHtml(data.response || '')));
+                    } catch (fatal) {
+                        $bubble.empty()
+                               .css('color', '#ef4444')
+                               .text('Connection error. Try again.');
+                    }
                 }
 
                 input.prop('disabled', false);
