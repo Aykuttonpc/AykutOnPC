@@ -3,7 +3,22 @@
     ViewData["Title"] = "Home";
 }
 
-<div class="hero">
+@*
+    Homepage FE showcase layer (added in the UX sprint).
+    All effects are vanilla JS / pure CSS — no extra packages. Each can be
+    disabled by removing the matching <script>/<style> block.
+
+      · cursor-spotlight  : soft radial glow follows the mouse on the hero
+      · magnetic CTAs     : .magnet buttons drift toward the cursor
+      · stack-constellation: interactive SVG of tech I work with
+      · stat-counter      : count-up animation when the strip scrolls into view
+      · live-terminal     : bottom-right pinned widget that types out a snippet
+*@
+
+<!-- Cursor spotlight overlay (hero only) -->
+<div id="cursor-spotlight" aria-hidden="true"></div>
+
+<div class="hero" id="hero">
     @if (!string.IsNullOrEmpty(Model.UserProfile.ProfilePictureUrl))
     {
         <img src="@Model.UserProfile.ProfilePictureUrl" alt="@Model.UserProfile.FullName" class="floating-avatar"
@@ -54,7 +69,7 @@
             var hireBody    = Uri.EscapeDataString("Hi Aykut,\n\nI saw your portfolio and would like to discuss an opportunity with you.\n\n");
         }
         <a href="mailto:@(hireEmail)?subject=@hireSubject&body=@hireBody"
-           class="btn-primary cyber-btn cta-hire"
+           class="btn-primary cyber-btn cta-hire magnet"
            style="font-weight: 600;">
             <i class="fa-solid fa-handshake" style="margin-right: 0.5rem;"></i>Hire Me
         </a>
@@ -62,13 +77,13 @@
         @if (!string.IsNullOrEmpty(Model.UserProfile.LinkedInUrl))
         {
             <a href="@Model.UserProfile.LinkedInUrl" target="_blank" rel="noopener"
-               class="btn-primary cyber-btn cta-resume"
+               class="btn-primary cyber-btn cta-resume magnet"
                style="background: transparent; border: 1px solid var(--secondary); color: var(--secondary);">
                 <i class="fa-solid fa-file-lines" style="margin-right: 0.5rem;"></i>View Resume
             </a>
         }
 
-        <a href="#about" class="btn-primary cyber-btn cta-about"
+        <a href="#about" class="btn-primary cyber-btn cta-about magnet"
            style="background: transparent; border: 1px solid rgba(255,255,255,0.15); color: var(--text-muted);">
             About Me
         </a>
@@ -84,7 +99,179 @@
         color: var(--primary);
         transform: translateY(-3px);
     }
+
+    /* ─── Cursor spotlight (hero only) ───────────────────────── */
+    #cursor-spotlight {
+        position: fixed;
+        top: 0; left: 0;
+        width: 600px; height: 600px;
+        margin: -300px 0 0 -300px;
+        pointer-events: none;
+        z-index: 1;
+        background: radial-gradient(circle, rgba(139, 92, 246, 0.15) 0%, rgba(6, 182, 212, 0.06) 35%, transparent 70%);
+        transform: translate(-9999px, -9999px);
+        transition: opacity 0.4s;
+        opacity: 0;
+        mix-blend-mode: screen;
+    }
+    body.spotlight-on #cursor-spotlight { opacity: 1; }
+    @@media (hover: none) { #cursor-spotlight { display: none; } }
+
+    /* ─── Magnetic CTAs ──────────────────────────────────────── */
+    .magnet { transition: transform 0.18s cubic-bezier(.34,1.56,.64,1); will-change: transform; }
+
+    /* ─── Stat counter strip ─────────────────────────────────── */
+    .stat-strip {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 1rem;
+        margin: 3rem auto 4rem;
+        padding: 1.5rem;
+        max-width: 900px;
+        background: linear-gradient(135deg, rgba(109, 40, 217, 0.08), rgba(6, 182, 212, 0.06));
+        border: 1px solid rgba(139, 92, 246, 0.18);
+        border-radius: 16px;
+        backdrop-filter: blur(6px);
+    }
+    @@media (max-width: 720px) {
+        .stat-strip { grid-template-columns: repeat(2, 1fr); }
+    }
+    .stat-cell { text-align: center; }
+    .stat-num {
+        font-family: 'JetBrains Mono', 'Inter', monospace;
+        font-size: 2.4rem;
+        font-weight: 700;
+        background: linear-gradient(135deg, var(--primary-glow), var(--secondary));
+        -webkit-background-clip: text;
+        background-clip: text;
+        color: transparent;
+        line-height: 1.1;
+    }
+    .stat-label {
+        color: var(--text-muted);
+        font-size: 0.78rem;
+        text-transform: uppercase;
+        letter-spacing: 0.18em;
+        margin-top: 0.4rem;
+    }
+
+    /* ─── Tech stack constellation ───────────────────────────── */
+    .stack-wrap {
+        position: relative;
+        max-width: 760px;
+        margin: 0 auto 4rem;
+        padding: 1.5rem;
+    }
+    .stack-svg { width: 100%; height: auto; display: block; }
+    .stack-node circle {
+        fill: var(--bg-card);
+        stroke: rgba(139, 92, 246, 0.5);
+        stroke-width: 2;
+        transition: all 0.3s;
+        cursor: pointer;
+    }
+    .stack-node text {
+        fill: var(--text-muted);
+        font-family: 'Inter', sans-serif;
+        font-size: 11px;
+        text-anchor: middle;
+        pointer-events: none;
+        transition: fill 0.3s;
+    }
+    .stack-node:hover circle {
+        fill: var(--primary);
+        stroke: var(--secondary);
+        stroke-width: 3;
+        filter: drop-shadow(0 0 12px rgba(139, 92, 246, 0.7));
+    }
+    .stack-node:hover text { fill: white; }
+    .stack-link {
+        stroke: rgba(139, 92, 246, 0.15);
+        stroke-width: 1;
+        transition: stroke 0.3s, stroke-width 0.3s;
+    }
+    .stack-link.is-active {
+        stroke: var(--secondary);
+        stroke-width: 2;
+    }
+
+    /* ─── Live terminal widget (pinned, bottom-left to avoid chatbot) ──────────────────────── */
+    #live-term {
+        position: fixed;
+        left: 1.2rem;
+        bottom: 1.2rem;
+        width: 320px;
+        max-width: calc(100vw - 2rem);
+        background: rgba(15, 23, 42, 0.92);
+        border: 1px solid rgba(6, 182, 212, 0.35);
+        border-radius: 10px;
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 0.78rem;
+        color: #e2e8f0;
+        box-shadow: 0 20px 50px -20px rgba(6, 182, 212, 0.3);
+        z-index: 9;
+        backdrop-filter: blur(8px);
+        transform: translateY(140%);
+        transition: transform 0.5s cubic-bezier(.34,1.56,.64,1);
+    }
+    #live-term.is-shown { transform: translateY(0); }
+    .term-bar {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.45rem 0.7rem;
+        border-bottom: 1px solid rgba(255,255,255,0.06);
+    }
+    .term-dot { width: 10px; height: 10px; border-radius: 50%; background: #475569; }
+    .term-dot.r { background: #ef4444; }
+    .term-dot.y { background: #f59e0b; }
+    .term-dot.g { background: #10b981; }
+    .term-title { font-size: 0.7rem; color: #94a3b8; margin-left: auto; }
+    .term-close {
+        background: none; border: none; color: #64748b;
+        cursor: pointer; padding: 0; font-size: 0.9rem;
+    }
+    .term-close:hover { color: white; }
+    .term-body {
+        padding: 0.7rem 0.8rem 0.9rem;
+        min-height: 90px;
+        white-space: pre-wrap;
+        line-height: 1.5;
+    }
+    .term-body .k { color: #c084fc; }
+    .term-body .s { color: #5eead4; }
+    .term-body .c { color: #64748b; font-style: italic; }
+    .term-caret {
+        display: inline-block;
+        width: 7px; height: 1em;
+        background: var(--secondary);
+        vertical-align: -2px;
+        animation: caret 1s steps(2) infinite;
+    }
+    @@keyframes caret { 50% { opacity: 0; } }
+
+    /* ─── Stronger glitch for h1 hover ──────────────────────── */
+    .glitch:hover {
+        animation: glitch-rgb 0.5s infinite;
+    }
+    @@keyframes glitch-rgb {
+        0%, 100% { text-shadow: 0 0 0 transparent; }
+        20%      { text-shadow: -2px 0 #06b6d4, 2px 0 #ef4444; }
+        40%      { text-shadow:  2px 0 #06b6d4, -2px 0 #ef4444; }
+        60%      { text-shadow: -1px 0 #8b5cf6, 1px 0 #06b6d4; }
+        80%      { text-shadow:  1px 0 #ef4444, -1px 0 #8b5cf6; }
+    }
 </style>
+
+<!-- Stat counter strip — animates on scroll into view -->
+<div class="container">
+    <div class="stat-strip" id="statStrip" data-aos="fade-up">
+        <div class="stat-cell"><div class="stat-num" data-target="@(Model.RecentBuilds.Count())">0</div><div class="stat-label">Public Builds</div></div>
+        <div class="stat-cell"><div class="stat-num" data-target="@(Model.TopSpecs.Count())">0</div><div class="stat-label">Tech Specs</div></div>
+        <div class="stat-cell"><div class="stat-num" data-target="@(Model.Experiences.Count())">0</div><div class="stat-label">Roles</div></div>
+        <div class="stat-cell"><div class="stat-num" data-target="999" data-suffix="+">0</div><div class="stat-label">Coffees Brewed</div></div>
+    </div>
+</div>
 
 <div class="container">
     
@@ -171,6 +358,42 @@
         </div>
     }
     
+    <!-- Tech Stack Constellation -->
+    <div id="stack" class="section-header" data-aos="fade-right">
+        <i class="fa-solid fa-diagram-project"></i> Stack Constellation
+    </div>
+    <p style="text-align:center; color: var(--text-muted); margin: -0.5rem 0 1.5rem; font-size: 0.9rem;">
+        Hover any node to see what it talks to.
+    </p>
+    <div class="stack-wrap" data-aos="zoom-in">
+        <svg class="stack-svg" viewBox="0 0 760 360" xmlns="http://www.w3.org/2000/svg">
+            <!-- Links: each line has data-from / data-to so JS can highlight on hover -->
+            <g id="stackLinks">
+                <line class="stack-link" x1="380" y1="180" x2="180" y2="100" data-from="dotnet" data-to="csharp"/>
+                <line class="stack-link" x1="380" y1="180" x2="580" y2="100" data-from="dotnet" data-to="aspnet"/>
+                <line class="stack-link" x1="380" y1="180" x2="120" y2="200" data-from="dotnet" data-to="ef"/>
+                <line class="stack-link" x1="380" y1="180" x2="640" y2="200" data-from="dotnet" data-to="postgres"/>
+                <line class="stack-link" x1="380" y1="180" x2="220" y2="290" data-from="dotnet" data-to="docker"/>
+                <line class="stack-link" x1="380" y1="180" x2="540" y2="290" data-from="dotnet" data-to="redis"/>
+                <line class="stack-link" x1="180" y1="100" x2="120" y2="200" data-from="csharp" data-to="ef"/>
+                <line class="stack-link" x1="580" y1="100" x2="640" y2="200" data-from="aspnet" data-to="postgres"/>
+                <line class="stack-link" x1="220" y1="290" x2="540" y2="290" data-from="docker" data-to="redis"/>
+                <line class="stack-link" x1="120" y1="200" x2="640" y2="200" data-from="ef" data-to="postgres"/>
+            </g>
+            <!-- Nodes -->
+            <g class="stack-node" data-key="csharp"   transform="translate(180,100)"><circle r="32"/><text dy="4">C#</text></g>
+            <g class="stack-node" data-key="aspnet"   transform="translate(580,100)"><circle r="32"/><text dy="4">ASP.NET</text></g>
+            <g class="stack-node" data-key="ef"       transform="translate(120,200)"><circle r="28"/><text dy="4">EF Core</text></g>
+            <g class="stack-node" data-key="postgres" transform="translate(640,200)"><circle r="28"/><text dy="4">Postgres</text></g>
+            <g class="stack-node" data-key="docker"   transform="translate(220,290)"><circle r="28"/><text dy="4">Docker</text></g>
+            <g class="stack-node" data-key="redis"    transform="translate(540,290)"><circle r="28"/><text dy="4">Redis</text></g>
+            <g class="stack-node" data-key="dotnet"   transform="translate(380,180)">
+                <circle r="44" style="fill: var(--primary); stroke: var(--secondary); stroke-width: 3;"/>
+                <text dy="4" style="fill: white; font-weight: 700; font-size: 13px;">.NET 9</text>
+            </g>
+        </svg>
+    </div>
+
     <!-- Builds Section -->
     <div id="builds" class="section-header" data-aos="fade-right">
         <i class="fa-solid fa-layer-group"></i> Latest Builds
@@ -293,7 +516,7 @@
                     $items.hide();
                     const start = (currentPage - 1) * pageSize;
                     const end = start + pageSize;
-                    
+
                     // Show current page items with a fade-in effect
                     $items.slice(start, end).fadeIn(300);
                 }
@@ -311,14 +534,144 @@
                         updateDisplay();
                     }
                 });
-                
+
                 // Initial check
                 if (totalItems <= pageSize) {
                    $('#pagination-controls').hide();
                 } else {
-                   updateDisplay(); 
+                   updateDisplay();
                 }
             });
+        </script>
+
+        <!-- ─── FE showcase layer ─────────────────────────────────── -->
+        <script>
+        (function () {
+            // ============ 1) Cursor spotlight (hero only) ============
+            const spotlight = document.getElementById('cursor-spotlight');
+            const hero      = document.getElementById('hero');
+            if (spotlight && hero && window.matchMedia('(hover: hover)').matches) {
+                hero.addEventListener('mouseenter', () => document.body.classList.add('spotlight-on'));
+                hero.addEventListener('mouseleave', () => document.body.classList.remove('spotlight-on'));
+                hero.addEventListener('mousemove', (e) => {
+                    spotlight.style.transform = `translate(${e.clientX}px, ${e.clientY}px)`;
+                });
+            }
+
+            // ============ 2) Magnetic CTAs ============
+            document.querySelectorAll('.magnet').forEach(el => {
+                const strength = 18; // px
+                el.addEventListener('mousemove', (e) => {
+                    const rect = el.getBoundingClientRect();
+                    const x = e.clientX - rect.left - rect.width  / 2;
+                    const y = e.clientY - rect.top  - rect.height / 2;
+                    el.style.transform = `translate(${x / rect.width * strength}px, ${y / rect.height * strength}px)`;
+                });
+                el.addEventListener('mouseleave', () => el.style.transform = '');
+            });
+
+            // ============ 3) Stat counter (count-up on view) ============
+            const stats = document.querySelectorAll('.stat-num');
+            if (stats.length && 'IntersectionObserver' in window) {
+                const obs = new IntersectionObserver((entries) => {
+                    entries.forEach(entry => {
+                        if (!entry.isIntersecting) return;
+                        const el = entry.target;
+                        const target = parseInt(el.dataset.target, 10) || 0;
+                        const suffix = el.dataset.suffix || '';
+                        const duration = 1100;
+                        const start = performance.now();
+                        function tick(now) {
+                            const t = Math.min(1, (now - start) / duration);
+                            const eased = 1 - Math.pow(1 - t, 3); // easeOutCubic
+                            el.textContent = Math.round(target * eased) + suffix;
+                            if (t < 1) requestAnimationFrame(tick);
+                        }
+                        requestAnimationFrame(tick);
+                        obs.unobserve(el);
+                    });
+                }, { threshold: 0.4 });
+                stats.forEach(s => obs.observe(s));
+            }
+
+            // ============ 4) Stack constellation (highlight links on hover) ============
+            const links = document.querySelectorAll('#stackLinks .stack-link');
+            document.querySelectorAll('.stack-node').forEach(node => {
+                const key = node.dataset.key;
+                node.addEventListener('mouseenter', () => {
+                    links.forEach(l => {
+                        if (l.dataset.from === key || l.dataset.to === key) {
+                            l.classList.add('is-active');
+                        }
+                    });
+                });
+                node.addEventListener('mouseleave', () => {
+                    links.forEach(l => l.classList.remove('is-active'));
+                });
+            });
+
+            // ============ 5) Live terminal widget — types out a snippet ============
+            const term = document.getElementById('live-term');
+            const body = document.getElementById('term-body');
+            const closeBtn = document.getElementById('term-close');
+            if (term && body) {
+                if (sessionStorage.getItem('aopcTermClosed') === '1') {
+                    term.style.display = 'none';
+                } else {
+                    const snippet = [
+                        { c: 'c', t: '// now coding...\n' },
+                        { c: 'k', t: 'public async ' },
+                        { c: 's', t: 'Task' },
+                        { c: '',  t: '<' },
+                        { c: 's', t: 'string' },
+                        { c: '',  t: '> ' },
+                        { c: '',  t: 'AskAsync(string q)\n{\n  ' },
+                        { c: 'k', t: 'await ' },
+                        { c: '',  t: 'foreach (' },
+                        { c: 'k', t: 'var ' },
+                        { c: '',  t: 'tok ' },
+                        { c: 'k', t: 'in ' },
+                        { c: '',  t: '_ai.Stream(q))\n    ' },
+                        { c: '',  t: 'yield ' },
+                        { c: 'k', t: 'return ' },
+                        { c: '',  t: 'tok;\n}' }
+                    ];
+                    function show() {
+                        term.classList.add('is-shown');
+                        term.setAttribute('aria-hidden', 'false');
+                        let i = 0;
+                        const caret = document.createElement('span');
+                        caret.className = 'term-caret';
+                        body.appendChild(caret);
+                        function step() {
+                            if (i >= snippet.length) return;
+                            const part = snippet[i];
+                            const span = document.createElement('span');
+                            if (part.c) span.className = part.c;
+                            const txt = document.createTextNode('');
+                            span.appendChild(txt);
+                            body.insertBefore(span, caret);
+                            let pos = 0;
+                            (function typeChar() {
+                                if (pos < part.t.length) {
+                                    txt.data = part.t.slice(0, ++pos);
+                                    setTimeout(typeChar, 18 + Math.random() * 30);
+                                } else {
+                                    i++;
+                                    setTimeout(step, 80);
+                                }
+                            })();
+                        }
+                        step();
+                    }
+                    setTimeout(show, 2200);
+                }
+                if (closeBtn) closeBtn.addEventListener('click', () => {
+                    term.classList.remove('is-shown');
+                    sessionStorage.setItem('aopcTermClosed', '1');
+                });
+            }
+        })();
         </script>
     }
 
@@ -346,6 +699,18 @@
                 </div>
             }
         }
+    </div>
+
+    <!-- Live terminal widget — pinned bottom-right, dismissible -->
+    <div id="live-term" aria-hidden="true">
+        <div class="term-bar">
+            <span class="term-dot r"></span>
+            <span class="term-dot y"></span>
+            <span class="term-dot g"></span>
+            <span class="term-title">~/aykut/now-coding.cs</span>
+            <button class="term-close" id="term-close" aria-label="Close terminal">×</button>
+        </div>
+        <div class="term-body" id="term-body"></div>
     </div>
 
     <!-- Contact Section -->
