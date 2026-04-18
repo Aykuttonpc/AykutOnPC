@@ -22,4 +22,43 @@
     <UserSecretsId>4ea72cfc-a1aa-4706-88c4-51f520bb93c1</UserSecretsId>
   </PropertyGroup>
 
+  <!-- ════════════════════════════════════════════════════════════════════
+       Auto-update the Docker web container after every Visual Studio build.
+
+       Fires only when ALL of these are true:
+         · Configuration = Debug                (Release/CI builds skip)
+         · BuildingInsideVisualStudio = true    (`dotnet build` from CLI skips)
+         · UpdateDockerOnBuild ≠ false          (opt-out via /p:UpdateDockerOnBuild=false
+                                                 or by editing this csproj)
+
+       The build will NOT fail if Docker Desktop is offline — you'll just get
+       a warning in the Error List. Re-build once Docker is up and you're set.
+       ════════════════════════════════════════════════════════════════════ -->
+  <PropertyGroup>
+    <UpdateDockerOnBuild Condition="'$(UpdateDockerOnBuild)' == ''">true</UpdateDockerOnBuild>
+  </PropertyGroup>
+
+  <Target Name="UpdateDockerWebContainer"
+          AfterTargets="Build"
+          Condition="'$(UpdateDockerOnBuild)' == 'true' AND '$(BuildingInsideVisualStudio)' == 'true' AND '$(Configuration)' == 'Debug'">
+    <!-- $(SolutionDir) is "*Undefined*" when MSBuild is invoked on this csproj alone (no .sln).
+         Fall back to the parent of this csproj — that's where docker-compose.yml lives. -->
+    <PropertyGroup>
+      <DockerComposeRoot>$([System.IO.Path]::GetFullPath('$(MSBuildThisFileDirectory)..'))</DockerComposeRoot>
+    </PropertyGroup>
+    <Message Importance="high" Text="🐳 Updating Docker web container (compose up -d --build web) in $(DockerComposeRoot)..." />
+    <Exec Command="docker compose up -d --build web"
+          WorkingDirectory="$(DockerComposeRoot)"
+          ContinueOnError="WarnAndContinue"
+          IgnoreExitCode="true">
+      <Output TaskParameter="ExitCode" PropertyName="DockerComposeExitCode" />
+    </Exec>
+    <Message Condition="'$(DockerComposeExitCode)' == '0'"
+             Importance="high"
+             Text="✅ Docker web container is up-to-date — http://localhost:8080" />
+    <Warning Condition="'$(DockerComposeExitCode)' != '0' AND '$(DockerComposeExitCode)' != ''"
+             Code="DOCKERUP"
+             Text="Docker compose exited with $(DockerComposeExitCode). Is Docker Desktop running? (.NET build itself succeeded.)" />
+  </Target>
+
 </Project>
