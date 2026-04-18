@@ -16,10 +16,23 @@
     backdrop-filter: blur(6px);
     -webkit-backdrop-filter: blur(6px);
     opacity: 0;
+    /* Without this the invisible overlay still swallows clicks while the
+       fade-out animation runs (and beyond, if the [hidden] attribute is
+       overridden by display:flex specificity). The user would tap the
+       Hire/Email button again and actually hit a modal button "underneath". */
+    pointer-events: none;
     transition: opacity 0.2s ease-out;
     padding: 1rem;
 }
-.email-picker-overlay.is-open { opacity: 1; }
+.email-picker-overlay.is-open {
+    opacity: 1;
+    pointer-events: auto;
+}
+/* Defense in depth: <div hidden> normally maps to display:none, but a class
+   selector with display:flex has equal specificity and wins by source order.
+   Re-assert display:none for the [hidden] state with a higher-specificity
+   selector so the modal is fully removed from the layout flow when closed. */
+.email-picker-overlay[hidden] { display: none; }
 
 .email-picker-card {
     position: relative;

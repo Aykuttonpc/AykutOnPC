@@ -16,7 +16,13 @@ HEALTH_RETRIES=15
 HEALTH_INTERVAL=4
 BRANCH="${2:-main}"
 SKIP_BACKUP=false
-LOG_FILE="/var/log/aykutonpc-deploy.log"
+# Log to a path the deploy user actually owns. /var/log/ requires root, which
+# CI'd ssh-action does not have, so the previous "/var/log/aykutonpc-deploy.log"
+# choice failed at the very first log() call with "tee: Permission denied" and
+# aborted the whole script (set -e + pipefail). Keeping logs alongside the
+# repo also makes them grep-able by the deploy user without sudo.
+LOG_FILE="${DEPLOY_DIR}/logs/deploy.log"
+mkdir -p "$(dirname "$LOG_FILE")"
 
 # ── Colours ──────────────────────────────────────────────────
 RED='\033[0;31m'; GREEN='\033[0;32m'; YELLOW='\033[1;33m'; CYAN='\033[0;36m'; NC='\033[0m'

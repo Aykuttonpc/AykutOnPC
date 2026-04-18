@@ -49,6 +49,10 @@
 
     let modalEl = null;
     let lastFocused = null;
+    // Tracks the closeModal fade-out timer. If the user reopens the modal during
+    // the 180ms fade-out, we MUST cancel this timeout — otherwise it fires while
+    // the modal is open and slams hidden=true on a visible modal.
+    let pendingCloseTimer = null;
 
     function buildModal() {
         if (modalEl) return modalEl;
@@ -101,6 +105,12 @@
 
     function openModal(email, subject, body) {
         const m = buildModal();
+        // Cancel any in-flight close fade-out so it does not hide the modal
+        // we are about to show.
+        if (pendingCloseTimer !== null) {
+            clearTimeout(pendingCloseTimer);
+            pendingCloseTimer = null;
+        }
         m.querySelector('.email-picker-addr').textContent = email;
         m.querySelector('.email-picker-toast').textContent = '';
         m.dataset.email = email;
@@ -121,8 +131,10 @@
     function closeModal() {
         if (!modalEl) return;
         modalEl.classList.remove('is-open');
-        setTimeout(() => {
+        if (pendingCloseTimer !== null) clearTimeout(pendingCloseTimer);
+        pendingCloseTimer = setTimeout(() => {
             modalEl.hidden = true;
+            pendingCloseTimer = null;
             if (lastFocused && typeof lastFocused.focus === 'function') {
                 lastFocused.focus();
             }

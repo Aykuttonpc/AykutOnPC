@@ -658,4 +658,144 @@ body:has(#particles-js) {
 .social-link:hover {
     animation: pulsate 1s infinite alternate;
 }
+
+/* =========================================================
+   RESPONSIVE — Tablet (≤ 992px)
+   Goal: keep the desktop look but loosen heights and spacing
+   so 1024×768 / iPad-portrait stops clipping content.
+   ========================================================= */
+@media (max-width: 992px) {
+    .hero { padding: 4rem 1.5rem; }
+    .hero h1, .glitch { font-size: 2.6rem; }
+    .container, .section-header { margin-left: 1rem; margin-right: 1rem; }
+
+    /* Cards: drop fixed height; otherwise text gets clipped at 280px */
+    .card { height: auto; max-height: none; }
+
+    .ai-widget-container { width: 340px; }
+}
+
+/* =========================================================
+   RESPONSIVE — Phone (≤ 768px)
+   Most of the bleed-over the user sees comes from inline style
+   attributes set in Index.cshtml — those win over class CSS, so
+   the few rules below need !important to actually take effect.
+   ========================================================= */
+@media (max-width: 768px) {
+
+    /* ── Layout & typography ─────────────────────────────── */
+    .navbar      { padding: 0.85rem 1rem; }
+    .nav-brand   { font-size: 1.2rem; }
+    .nav-links   { display: none; }                /* Hide horizontal nav on phones; sections are reachable by scroll */
+    .container   { padding: 0 1rem; }
+    .hero        { padding: 3rem 1rem !important; }
+    .hero h1     { font-size: 2rem !important; }
+    .hero p, .typing-effect { font-size: 1rem !important; max-width: 100% !important; white-space: normal !important; border-right: 0 !important; animation: none !important; }
+    .glitch      { font-size: 2rem !important; }
+    .glitch::before, .glitch::after { display: none; } /* Glitch overlay is desktop-only — looks broken on small text */
+
+    .section-header {
+        font-size: 1.4rem;
+        margin: 2.5rem 0 1rem;
+        gap: 0.6rem;
+    }
+
+    /* ── Floating avatar ─────────────────────────────────── */
+    .floating-avatar {
+        width: 110px !important;
+        height: 110px !important;
+        margin-bottom: 1.5rem !important;
+    }
+
+    /* ── Social row ──────────────────────────────────────── */
+    .hero > div[style*="display: flex"] { gap: 1rem !important; font-size: 1.25rem !important; }
+
+    /* ── CTA buttons (Hire Me / Resume / About) ──────────── */
+    .btn-primary.cyber-btn {
+        padding: 0.7rem 1.2rem !important;
+        font-size: 0.9rem !important;
+        letter-spacing: 1px !important;
+    }
+    /* Contact section "Send an Email" button overrides its own inline padding/font */
+    #contact + .card .btn-primary.cyber-btn {
+        padding: 0.85rem 1.5rem !important;
+        font-size: 1rem !important;
+        width: 100%;
+        max-width: 280px;
+        text-align: center;
+    }
+
+    /* ── Cards grid ──────────────────────────────────────── */
+    .grid {
+        grid-template-columns: 1fr !important;     /* single column */
+        gap: 1.25rem;
+    }
+    .card {
+        height: auto !important;
+        max-height: none !important;
+        padding: 1rem !important;
+    }
+    .card > * { transform: none !important; }      /* Disable 3D pop-out — looks janky on touch */
+    .card:hover { transform: none !important; }    /* Touch devices: no hover */
+
+    /* The contact "Let's work together" card has its own inline padding 3rem */
+    #contact + .card { padding: 1.5rem 1rem !important; }
+
+    /* ── Timeline ─────────────────────────────────────────── */
+    .timeline-section::before { left: 12px; width: 3px; }
+    .timeline-item { padding-left: 38px; margin-bottom: 2rem; }
+    .timeline-dot { left: 4px; width: 18px; height: 18px; border-width: 3px; }
+    .timeline-content { padding: 1rem; }
+    .timeline-title { font-size: 1.05rem; }
+
+    /* ── AI widget ────────────────────────────────────────── */
+    .ai-widget-trigger {
+        right: 1rem;
+        bottom: 1rem;
+        width: 52px;
+        height: 52px;
+        font-size: 1.25rem;
+    }
+    .ai-widget-container {
+        right: 0.5rem !important;
+        left: 0.5rem !important;
+        bottom: 4.5rem !important;
+        width: auto !important;
+        max-width: none !important;
+        height: 70vh !important;
+        max-height: 70vh !important;
+    }
+
+    /* ── Footer ───────────────────────────────────────────── */
+    footer { font-size: 0.8rem; padding: 1.5rem 1rem !important; }
+}
+
+/* =========================================================
+   RESPONSIVE — Small phones (≤ 420px)
+   Tighten spacing one more notch so iPhone SE / Galaxy A
+   don't get horizontal scroll on long words.
+   ========================================================= */
+@media (max-width: 420px) {
+    .hero h1  { font-size: 1.6rem !important; }
+    .glitch   { font-size: 1.6rem !important; }
+    .hero p   { font-size: 0.92rem !important; }
+    .section-header { font-size: 1.2rem; }
+    .btn-primary.cyber-btn {
+        padding: 0.6rem 1rem !important;
+        font-size: 0.82rem !important;
+    }
+    .floating-avatar {
+        width: 90px !important;
+        height: 90px !important;
+    }
+}
+
+/* =========================================================
+   Touch-only tweaks — kill hover-only effects that get stuck
+   in the "hover" state on tap-and-release.
+   ========================================================= */
+@media (hover: none) {
+    .card:hover, .timeline-content:hover { transform: none !important; }
+    .social-link:hover { animation: none !important; }
+}
 
