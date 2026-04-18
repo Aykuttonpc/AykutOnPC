@@ -11,7 +11,12 @@ DEPLOY_DIR="/opt/aykutonpc"
 COMPOSE_FILE="docker-compose.prod.yml"
 ENV_FILE=".env.prod"
 APP_CONTAINER="aykutonpc-web"
-HEALTH_URL="http://localhost:8080/health"
+# Health check runs INSIDE the web container — the host has no 8080 port mapping
+# (only nginx exposes 80/443), so a host-side `curl http://localhost:8080/health`
+# always fails even when the app is perfectly healthy. `docker exec` hits the
+# container on its own loopback, which is what the compose healthcheck and the
+# nginx upstream both rely on.
+HEALTH_CMD="docker exec $APP_CONTAINER curl -fsS http://localhost:8080/health"
 HEALTH_RETRIES=15
 HEALTH_INTERVAL=4
 BRANCH="main"
@@ -94,7 +99,7 @@ ok "Web container restarted."
 # ── Step 6: Health check gate ─────────────────────────────────
 log "[6/6] Health check gate (${HEALTH_RETRIES} retries × ${HEALTH_INTERVAL}s)..."
 ATTEMPT=0
-until curl -sf "$HEALTH_URL" > /dev/null 2>&1; do
+until $HEALTH_CMD > /dev/null 2>&1; do
     ATTEMPT=$((ATTEMPT + 1))
     if [[ "$ATTEMPT" -ge "$HEALTH_RETRIES" ]]; then
         fail "Health check failed after $((ATTEMPT * HEALTH_INTERVAL))s. ROLLBACK REQUIRED."
