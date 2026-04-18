@@ -14,7 +14,7 @@ APP_CONTAINER="aykutonpc-web"
 HEALTH_URL="http://localhost:8080/health"
 HEALTH_RETRIES=15
 HEALTH_INTERVAL=4
-BRANCH="${2:-main}"
+BRANCH="main"
 SKIP_BACKUP=false
 # Log to a path the deploy user actually owns. /var/log/ requires root, which
 # CI'd ssh-action does not have, so the previous "/var/log/aykutonpc-deploy.log"
@@ -33,10 +33,16 @@ warn() { echo -e "${YELLOW}[$(date -Iseconds)] ⚠️  $*${NC}" | tee -a "$LOG_F
 fail() { echo -e "${RED}[$(date -Iseconds)] ❌ $*${NC}" | tee -a "$LOG_FILE"; exit 1; }
 
 # ── Parse args ────────────────────────────────────────────────
-for arg in "$@"; do
-  case $arg in
-    --skip-backup) SKIP_BACKUP=true ;;
-    --branch) BRANCH="${3:-main}" ;;
+# Proper while/shift loop. The previous `for arg in $@; case --branch) BRANCH=${3:-main}`
+# was broken: $3 reads the THIRD positional arg of the script, not the value
+# AFTER --branch. So `deploy.sh --branch master --skip-backup` set
+# BRANCH=--skip-backup and then `git checkout --skip-backup` exploded under
+# `set -e`. Loop with explicit shift makes the value pairing unambiguous.
+while [[ $# -gt 0 ]]; do
+  case $1 in
+    --skip-backup) SKIP_BACKUP=true; shift ;;
+    --branch)      BRANCH="${2:-main}"; shift 2 ;;
+    *)             shift ;;
   esac
 done
 
