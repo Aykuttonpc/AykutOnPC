@@ -92,7 +92,10 @@ services:
     environment:
       ASPNETCORE_ENVIRONMENT:               Production
       ASPNETCORE_URLS:                      http://+:8080
-      ASPNETCORE_ALLOWED_HOSTS:             ${DOMAIN_NAME}
+      # AllowedHosts is the .NET config key (NOT ASPNETCORE_ALLOWED_HOSTS — that env var
+      # name is not recognized). Behind nginx/Cloudflare we accept any Host because the
+      # reverse proxy is the trust boundary. Set DOMAIN_NAME-only if you want app-side enforcement.
+      AllowedHosts:                         "*"
       ConnectionStrings__DefaultConnection: >-
         Host=db;Port=5432;Database=AykutOnPC_Db;Username=postgres;
         Password=${DB_PASSWORD};Pooling=true;MinPoolSize=2;MaxPoolSize=20;

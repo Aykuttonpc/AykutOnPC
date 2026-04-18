@@ -97,6 +97,7 @@ _ = Task.Run(async () =>
     var services = scope.ServiceProvider;
     var context = services.GetRequiredService<AppDbContext>();
     var seedOptions = services.GetRequiredService<IOptions<SeedDataSettings>>();
+    var securityOptions = services.GetRequiredService<IOptions<SecuritySettings>>();
     var logger = services.GetRequiredService<ILoggerFactory>().CreateLogger("DbInitializer");
 
     bool migrationSucceeded = false;
@@ -121,6 +122,44 @@ _ = Task.Run(async () =>
             logger.LogWarning("Background: Migration failed. Retrying in 10 seconds... Error: {Message}", ex.Message);
             await Task.Delay(10000);
         }
+    }
+
+    // After migrations succeed, idempotently insert the admin user if missing.
+    // We deliberately DO NOT update an existing admin's password here — that would silently
+    // re-write credentials on every container restart. To rotate the password explicitly,
+    // run: docker exec aykutonpc-web dotnet AykutOnPC.Web.dll --seed-admin
+    if (!migrationSucceeded) return;
+    try
+    {
+        var seed = seedOptions.Value;
+        var username = seed.AdminUser.Username;
+        var password = seed.AdminUser.Password;
+        if (string.IsNullOrWhiteSpace(username) || string.IsNullOrWhiteSpace(password))
+        {
+            logger.LogWarning("Background: Admin auto-seed skipped — Username/Password not configured.");
+            return;
+        }
+
+        var exists = await context.Users.AnyAsync(u => u.Username == username);
+        if (exists)
+        {
+            logger.LogInformation("Background: Admin '{Username}' already exists — skipping auto-seed.", username);
+            return;
+        }
+
+        var hash = BCrypt.Net.BCrypt.HashPassword(password, workFactor: securityOptions.Value.BCryptWorkFactor);
+        context.Users.Add(new AykutOnPC.Core.Entities.User
+        {
+            Username = username,
+            PasswordHash = hash,
+            Role = "Admin"
+        });
+        await context.SaveChangesAsync();
+        logger.LogInformation("Background: Admin '{Username}' seeded successfully.", username);
+    }
+    catch (Exception ex)
+    {
+        logger.LogError(ex, "Background: Admin auto-seed failed (non-fatal).");
     }
 });
 
