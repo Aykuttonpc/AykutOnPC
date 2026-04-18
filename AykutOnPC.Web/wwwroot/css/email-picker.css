@@ -1,0 +1,179 @@
+/*
+ * Email picker — modal chooser styles.
+ * Cyberpunk palette via the same CSS vars as site.css (--primary, --secondary,
+ * --bg-card, --text-muted). Modal is centered, dark-glass, with a subtle
+ * gradient ring matching the rest of the UI.
+ */
+
+.email-picker-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 10000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(5, 5, 12, 0.78);
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+    opacity: 0;
+    transition: opacity 0.2s ease-out;
+    padding: 1rem;
+}
+.email-picker-overlay.is-open { opacity: 1; }
+
+.email-picker-card {
+    position: relative;
+    width: 100%;
+    max-width: 460px;
+    background: linear-gradient(160deg, #14141f 0%, #0d0d18 100%);
+    border: 1px solid rgba(109, 40, 217, 0.4);
+    border-radius: 18px;
+    padding: 2rem 1.75rem 1.5rem;
+    box-shadow:
+        0 20px 60px rgba(0, 0, 0, 0.6),
+        0 0 0 1px rgba(6, 182, 212, 0.08),
+        0 0 40px rgba(109, 40, 217, 0.18);
+    transform: translateY(8px) scale(0.98);
+    transition: transform 0.2s ease-out;
+    color: #f0f0f0;
+    font-family: 'Inter', system-ui, sans-serif;
+}
+.email-picker-overlay.is-open .email-picker-card {
+    transform: translateY(0) scale(1);
+}
+
+/* Gradient ring on top — purely decorative */
+.email-picker-card::before {
+    content: '';
+    position: absolute;
+    inset: -1px;
+    border-radius: 18px;
+    padding: 1px;
+    background: linear-gradient(135deg, rgba(109, 40, 217, 0.6), rgba(6, 182, 212, 0.5), transparent 60%);
+    -webkit-mask:
+        linear-gradient(#000 0 0) content-box,
+        linear-gradient(#000 0 0);
+    -webkit-mask-composite: xor;
+            mask-composite: exclude;
+    pointer-events: none;
+}
+
+.email-picker-close {
+    position: absolute;
+    top: 0.75rem;
+    right: 0.85rem;
+    background: transparent;
+    border: 0;
+    color: rgba(240, 240, 240, 0.6);
+    font-size: 1.6rem;
+    line-height: 1;
+    cursor: pointer;
+    padding: 0.25rem 0.55rem;
+    border-radius: 8px;
+    transition: background 0.15s, color 0.15s;
+}
+.email-picker-close:hover {
+    background: rgba(255, 255, 255, 0.06);
+    color: #fff;
+}
+
+.email-picker-head {
+    text-align: center;
+    margin-bottom: 1.5rem;
+}
+.email-picker-icon {
+    display: inline-block;
+    font-size: 1.6rem;
+    color: var(--secondary, #06b6d4);
+    background: rgba(6, 182, 212, 0.08);
+    padding: 0.7rem;
+    border-radius: 50%;
+    margin-bottom: 0.8rem;
+}
+.email-picker-head h3 {
+    margin: 0 0 0.3rem;
+    font-size: 1.25rem;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+}
+.email-picker-addr {
+    margin: 0;
+    font-size: 0.9rem;
+    color: rgba(240, 240, 240, 0.55);
+    word-break: break-all;
+    font-family: ui-monospace, 'SF Mono', Menlo, monospace;
+}
+
+.email-picker-options {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0.65rem;
+}
+
+.email-picker-btn {
+    display: flex;
+    align-items: center;
+    gap: 0.65rem;
+    padding: 0.85rem 1rem;
+    background: rgba(255, 255, 255, 0.025);
+    border: 1px solid rgba(255, 255, 255, 0.07);
+    border-radius: 10px;
+    color: #f0f0f0;
+    font-family: inherit;
+    font-size: 0.92rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background 0.15s, border-color 0.15s, transform 0.1s;
+    text-align: left;
+}
+.email-picker-btn i {
+    font-size: 1.05rem;
+    width: 1.4rem;
+    text-align: center;
+    color: var(--secondary, #06b6d4);
+    flex-shrink: 0;
+}
+.email-picker-btn:hover {
+    background: rgba(109, 40, 217, 0.12);
+    border-color: rgba(109, 40, 217, 0.5);
+    transform: translateY(-1px);
+}
+.email-picker-btn:focus-visible {
+    outline: 2px solid var(--secondary, #06b6d4);
+    outline-offset: 2px;
+}
+.email-picker-btn:active { transform: translateY(0); }
+
+/* Span the last two buttons (Copy + Default) full-width on narrow screens
+   for thumb reach */
+.email-picker-btn[data-provider="copy"],
+.email-picker-btn[data-provider="default"] {
+    background: rgba(255, 255, 255, 0.015);
+}
+
+.email-picker-toast {
+    margin-top: 1rem;
+    text-align: center;
+    font-size: 0.85rem;
+    color: var(--secondary, #06b6d4);
+    min-height: 1.2em;
+    opacity: 0;
+    transform: translateY(4px);
+    transition: opacity 0.2s, transform 0.2s;
+}
+.email-picker-toast.is-visible {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+@media (max-width: 480px) {
+    .email-picker-options { grid-template-columns: 1fr; }
+    .email-picker-card { padding: 1.5rem 1.25rem 1.25rem; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .email-picker-overlay,
+    .email-picker-card,
+    .email-picker-btn,
+    .email-picker-toast { transition: none; }
+}

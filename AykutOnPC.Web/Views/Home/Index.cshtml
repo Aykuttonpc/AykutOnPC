@@ -58,19 +58,29 @@
         }
         @if (!string.IsNullOrEmpty(Model.UserProfile.Email))
         {
-            <a href="mailto:@Model.UserProfile.Email" class="social-link"><i class="fa-solid fa-envelope"></i></a>
+            <a href="mailto:@Model.UserProfile.Email" class="social-link"
+               data-email-picker data-email="@Model.UserProfile.Email"
+               aria-label="Send email">
+                <i class="fa-solid fa-envelope"></i>
+            </a>
         }
     </div>
 
     <div style="margin-top: 2rem; display: flex; gap: 1rem; flex-wrap: wrap; justify-content: center;" data-aos="fade-up" data-aos-delay="200">
         @{
-            var hireEmail   = string.IsNullOrEmpty(Model.UserProfile.Email) ? "aykutcincik@ogr.eskisehir.edu.tr" : Model.UserProfile.Email;
-            var hireSubject = Uri.EscapeDataString("Hi Aykut — Let's work together");
-            var hireBody    = Uri.EscapeDataString("Hi Aykut,\n\nI saw your portfolio and would like to discuss an opportunity with you.\n\n");
+            var hireEmail       = string.IsNullOrEmpty(Model.UserProfile.Email) ? "aykutcincik@ogr.eskisehir.edu.tr" : Model.UserProfile.Email;
+            var hireSubjectRaw  = "Hi Aykut — Let's work together";
+            var hireBodyRaw     = "Hi Aykut,\n\nI saw your portfolio and would like to discuss an opportunity with you.\n\n";
+            var hireSubjectEnc  = Uri.EscapeDataString(hireSubjectRaw);
+            var hireBodyEnc     = Uri.EscapeDataString(hireBodyRaw);
         }
-        <a href="mailto:@(hireEmail)?subject=@hireSubject&body=@hireBody"
+        <a href="mailto:@(hireEmail)?subject=@hireSubjectEnc&body=@hireBodyEnc"
            class="btn-primary cyber-btn cta-hire magnet"
-           style="font-weight: 600;">
+           style="font-weight: 600;"
+           data-email-picker
+           data-email="@hireEmail"
+           data-subject="@hireSubjectRaw"
+           data-body="@hireBodyRaw">
             <i class="fa-solid fa-handshake" style="margin-right: 0.5rem;"></i>Hire Me
         </a>
 
@@ -722,7 +732,14 @@
         <p style="color: var(--text-muted); margin: 1rem 0 2rem;">
             I'm currently open to new opportunities and collaborations.
         </p>
-        <a href="mailto:@(string.IsNullOrEmpty(Model.UserProfile.Email) ? "example@email.com" : Model.UserProfile.Email)" class="btn-primary cyber-btn" style="padding: 1rem 3rem; font-size: 1.2rem;">
+        @{
+            var contactEmail = string.IsNullOrEmpty(Model.UserProfile.Email) ? "aykutcincik@ogr.eskisehir.edu.tr" : Model.UserProfile.Email;
+        }
+        <a href="mailto:@contactEmail"
+           class="btn-primary cyber-btn"
+           style="padding: 1rem 3rem; font-size: 1.2rem;"
+           data-email-picker
+           data-email="@contactEmail">
             <i class="fa-solid fa-envelope"></i> Send an Email
         </a>
     </div>

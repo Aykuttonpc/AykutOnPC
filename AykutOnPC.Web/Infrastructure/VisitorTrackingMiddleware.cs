@@ -14,7 +14,10 @@ namespace AykutOnPC.Web.Infrastructure;
 ///   - Bot traffic filtered by User-Agent before hitting the DB.
 ///   - Only tracks HTML page requests (excludes /api, /health, static assets).
 /// </summary>
-public sealed class VisitorTrackingMiddleware(RequestDelegate next, ILogger<VisitorTrackingMiddleware> logger)
+public sealed class VisitorTrackingMiddleware(
+    RequestDelegate next,
+    ILogger<VisitorTrackingMiddleware> logger,
+    IServiceScopeFactory scopeFactory)
 {
     // Paths we never want to track
     private static readonly string[] ExcludedPrefixes =
@@ -28,7 +31,7 @@ public sealed class VisitorTrackingMiddleware(RequestDelegate next, ILogger<Visi
     // Daily salt rotates at midnight UTC — makes IPs untraceable across days
     private static string DailySalt => DateTime.UtcNow.ToString("yyyyMMdd");
 
-    public async Task InvokeAsync(HttpContext context, IServiceProvider serviceProvider)
+    public async Task InvokeAsync(HttpContext context)
     {
         await next(context);   // Process request first — capture status codes
 
@@ -40,19 +43,30 @@ public sealed class VisitorTrackingMiddleware(RequestDelegate next, ILogger<Visi
         var userAgent = context.Request.Headers.UserAgent.ToString();
         if (IsBot(userAgent)) return;
 
-        // Fire-and-forget — analytics must not slow down the response
+        // Snapshot every HttpContext-derived value BEFORE the fire-and-forget.
+        // Once the response completes, ASP.NET recycles HttpContext (and its request
+        // services scope) for the next request — accessing Request.Path/Headers/etc
+        // inside Task.Run race-conditions with the next request and silently fails.
+        var path    = context.Request.Path.ToString().ToLowerInvariant();
+        var referer = TruncateSafe(context.Request.Headers.Referer.ToString(), 512);
+        var ip      = GetClientIp(context);
+
+        // Fire-and-forget — analytics must not slow down the response.
+        // We use IServiceScopeFactory (singleton, root-bound) instead of the request-
+        // scoped IServiceProvider, because the latter is disposed when the response
+        // completes and cannot create child scopes.
         _ = Task.Run(async () =>
         {
             try
             {
-                await using var scope = serviceProvider.CreateAsyncScope();
+                await using var scope = scopeFactory.CreateAsyncScope();
                 var analyticsService = scope.ServiceProvider.GetRequiredService<IVisitorAnalyticsService>();
 
                 var pageView = new PageView
                 {
-                    Path        = context.Request.Path.ToString().ToLowerInvariant(),
-                    Referrer    = TruncateSafe(context.Request.Headers.Referer.ToString(), 512),
-                    HashedIp    = HashIp(GetClientIp(context)),
+                    Path        = path,
+                    Referrer    = referer,
+                    HashedIp    = HashIp(ip),
                     UserAgent   = TruncateSafe(userAgent, 512),
                     DeviceType  = DetectDevice(userAgent),
                     VisitedAtUtc = DateTime.UtcNow
@@ -62,7 +76,8 @@ public sealed class VisitorTrackingMiddleware(RequestDelegate next, ILogger<Visi
             }
             catch (Exception ex)
             {
-                logger.LogDebug(ex, "VisitorTracking background task failed silently.");
+                // Visible in production logs — silent failure used to hide real bugs.
+                logger.LogWarning(ex, "VisitorTracking background task failed for path {Path}", path);
             }
         });
     }
