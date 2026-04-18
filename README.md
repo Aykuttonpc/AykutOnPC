@@ -3,7 +3,7 @@
 > Personal portfolio + AI chat + admin dashboard.
 > .NET 9 · ASP.NET MVC · PostgreSQL 16 · Groq Llama 3.3 70B · Docker · Nginx · Hetzner.
 
-[![CI](https://github.com/aykutcncik/AykutOnPC/actions/workflows/ci.yml/badge.svg)](.github/workflows/ci.yml)
+[![CI](https://github.com/Aykuttonpc/AykutOnPC/actions/workflows/ci.yml/badge.svg?branch=master)](https://github.com/Aykuttonpc/AykutOnPC/actions/workflows/ci.yml)
 
 ---
 
