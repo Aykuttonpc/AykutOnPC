@@ -19,6 +19,7 @@ APP_CONTAINER="aykutonpc-web"
 HEALTH_CMD="docker exec $APP_CONTAINER curl -fsS http://localhost:8080/health"
 HEALTH_RETRIES=15
 HEALTH_INTERVAL=4
+NGINX_CONTAINER="aykutonpc-nginx"
 BRANCH="main"
 SKIP_BACKUP=false
 # Log to a path the deploy user actually owns. /var/log/ requires root, which
@@ -91,13 +92,28 @@ PREVIOUS_IMAGE=$(docker inspect --format='{{.Image}}' "$APP_CONTAINER" 2>/dev/nu
 log "[4/6] Previous image recorded for rollback: ${PREVIOUS_IMAGE:0:20}..."
 
 # ── Step 5: Rolling restart (web only — DB & Redis untouched) ─
-log "[5/6] Rolling restart of web container..."
+log "[5/7] Rolling restart of web container..."
 docker compose -f "$COMPOSE_FILE" --env-file "$ENV_FILE" \
     up -d --no-deps web
 ok "Web container restarted."
 
-# ── Step 6: Health check gate ─────────────────────────────────
-log "[6/6] Health check gate (${HEALTH_RETRIES} retries × ${HEALTH_INTERVAL}s)..."
+# ── Step 6: Reload nginx (config volume-mounted from repo) ────
+# Nginx config is mounted via ./nginx/conf.d:/etc/nginx/conf.d:ro, so a `git
+# reset --hard` in Step 2 already updated the file on disk. But nginx caches
+# the parsed config in memory — `nginx -s reload` makes it pick up changes
+# (CSP headers, rate limits, new locations) without dropping connections.
+# If the config is invalid, reload fails gracefully and old config keeps running.
+log "[6/7] Reloading nginx config..."
+if docker exec "$NGINX_CONTAINER" nginx -t > /dev/null 2>&1; then
+    docker exec "$NGINX_CONTAINER" nginx -s reload
+    ok "Nginx config reloaded."
+else
+    warn "Nginx config test FAILED. Keeping old config running."
+    docker exec "$NGINX_CONTAINER" nginx -t || true
+fi
+
+# ── Step 7: Health check gate ─────────────────────────────────
+log "[7/7] Health check gate (${HEALTH_RETRIES} retries × ${HEALTH_INTERVAL}s)..."
 ATTEMPT=0
 until $HEALTH_CMD > /dev/null 2>&1; do
     ATTEMPT=$((ATTEMPT + 1))
