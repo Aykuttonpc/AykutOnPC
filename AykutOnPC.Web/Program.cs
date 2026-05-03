@@ -172,6 +172,15 @@ if (app.Environment.IsDevelopment())
 
 app.UseRouting();
 
+app.Use(async (context, next) =>
+{
+    context.Response.Headers["X-Content-Type-Options"] = "nosniff";
+    context.Response.Headers["X-Frame-Options"] = "DENY";
+    context.Response.Headers["Referrer-Policy"] = "strict-origin-when-cross-origin";
+    context.Response.Headers["Permissions-Policy"] = "camera=(), microphone=(), geolocation=()";
+    await next();
+});
+
 // Visitor Intelligence — server-side, cookie-free, GDPR-safe page tracking
 app.UseMiddleware<AykutOnPC.Web.Infrastructure.VisitorTrackingMiddleware>();
 

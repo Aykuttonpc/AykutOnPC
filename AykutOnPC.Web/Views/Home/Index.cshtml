@@ -293,7 +293,10 @@
             <i class="fa-solid fa-user"></i> About Me
         </div>
         <div class="card" data-aos="fade-up" data-tilt data-tilt-max="2" style="height: auto; max-height: none; padding: 2.5rem; line-height: 1.8; font-size: 1.1rem; margin-bottom: 4rem;">
-            @Html.Raw(Model.UserProfile.Bio.Replace("\n", "<br/>"))
+            @foreach (var line in Model.UserProfile.Bio.Split('\n'))
+            {
+                @Html.Encode(line)<br/>
+            }
         </div>
     }
 
