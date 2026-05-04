@@ -295,7 +295,7 @@
         <div class="card" data-aos="fade-up" data-tilt data-tilt-max="2" style="height: auto; max-height: none; padding: 2.5rem; line-height: 1.8; font-size: 1.1rem; margin-bottom: 4rem;">
             @foreach (var line in Model.UserProfile.Bio.Split('\n'))
             {
-                @Html.Encode(line)<br/>
+                @line<br/>
             }
         </div>
     }
