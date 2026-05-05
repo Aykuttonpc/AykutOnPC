@@ -103,4 +103,7 @@ public class ChatRequestDto
     [Required(ErrorMessage = "Message cannot be empty.")]
     [StringLength(2000, ErrorMessage = "Message cannot exceed 2000 characters.")]
     public string Message { get; set; } = string.Empty;
+
+    /// <summary>Optional. When supplied, the server links this turn to a prior conversation for memory.</summary>
+    public Guid? ConversationId { get; set; }
 }

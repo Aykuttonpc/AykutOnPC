@@ -13,6 +13,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     public DbSet<Education> Educations { get; set; }
     public DbSet<Profile> Profiles { get; set; }
     public DbSet<PageView> PageViews { get; set; }
+    public DbSet<ChatLog> ChatLogs { get; set; }
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
@@ -68,6 +69,16 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             entity.HasIndex(e => e.VisitedAtUtc).HasDatabaseName("IX_PageViews_VisitedAtUtc");
             entity.HasIndex(e => new { e.VisitedAtUtc, e.Path }).HasDatabaseName("IX_PageViews_VisitedAtUtc_Path");
             entity.HasIndex(e => e.HashedIp).HasDatabaseName("IX_PageViews_HashedIp");
+        });
+
+        modelBuilder.Entity<ChatLog>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            // Conversation memory lookup: "give me the last N turns of this conversation"
+            entity.HasIndex(e => new { e.ConversationId, e.TurnIndex }).HasDatabaseName("IX_ChatLogs_Conv_Turn");
+            // Admin dashboard list (recency + filter by kind)
+            entity.HasIndex(e => e.CreatedAtUtc).HasDatabaseName("IX_ChatLogs_CreatedAtUtc");
+            entity.HasIndex(e => e.Kind).HasDatabaseName("IX_ChatLogs_Kind");
         });
     }
 }

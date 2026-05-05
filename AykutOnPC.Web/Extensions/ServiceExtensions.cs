@@ -158,6 +158,9 @@ public static class ServiceExtensions
         // Visitor Intelligence
         services.AddScoped<IVisitorAnalyticsService, VisitorAnalyticsService>();
 
+        // Chat telemetry / admin log
+        services.AddScoped<IChatLogService, ChatLogService>();
+
         return services;
     }
 

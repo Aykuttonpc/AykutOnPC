@@ -105,61 +105,124 @@
     <script src="~/js/email-picker.js" asp-append-version="true" defer></script>
     <script>
         $(document).ready(function() {
-            // Widget Toggle
+            // ── Conversation state ───────────────────────────────────
+            // ConversationId persists for the browser tab so the server can replay last N
+            // turns as memory. Cleared when the tab closes (sessionStorage, not localStorage).
+            const CONV_KEY = 'aykutonpc.chat.conversationId';
+            let conversationId = sessionStorage.getItem(CONV_KEY) || null;
+
+            // ── Widget toggle ────────────────────────────────────────
             $('#ai-trigger-btn').click(function() {
                 $('#ai-widget-container').toggleClass('active');
                 $(this).toggleClass('active');
+                ensureSuggestionsLoaded();
             });
-            
             $('#close-ai-widget').click(function() {
                 $('#ai-widget-container').removeClass('active');
             });
 
-            // Send Message Logic — Server-Sent Events streaming.
-            // The backend pushes "data: {\"t\":\"<chunk>\"}\n\n" per token, then "event: done\n\n".
-            // We render token-by-token for ChatGPT-style typing UX. Falls back to /api/chat/ask
-            // (single-shot JSON) if the browser blocks streaming or the network disconnects early.
+            // ── Suggestion chips ─────────────────────────────────────
+            let cachedSuggestions = null;
+
+            async function ensureSuggestionsLoaded() {
+                // Welcome-state chips: lazy-fetched once per page so the widget feels instant.
+                if (cachedSuggestions !== null) {
+                    renderSuggestions(cachedSuggestions);
+                    return;
+                }
+                try {
+                    const r = await fetch('/api/chat/suggestions', { method: 'GET' });
+                    cachedSuggestions = r.ok ? await r.json() : [];
+                } catch (_) {
+                    cachedSuggestions = [];
+                }
+                renderSuggestions(cachedSuggestions);
+            }
+
+            function renderSuggestions(list) {
+                const $box = $('#ai-suggestions');
+                $box.empty();
+                if (!list || list.length === 0) return;
+                list.forEach(s => {
+                    const $chip = $('<button type="button" class="ai-suggestion-chip"></button>')
+                        .text(s.label)
+                        .on('click', () => {
+                            $('#ai-input').val(s.prompt);
+                            sendMessage();
+                        });
+                    $box.append($chip);
+                });
+            }
+
+            function clearSuggestions() {
+                $('#ai-suggestions').empty();
+            }
+
+            // ── Status dot ───────────────────────────────────────────
+            // Maps server-side ChatErrorKind -> visible status. We only flip the dot when the
+            // error is something the user can act on, otherwise keep it green so the widget
+            // doesn't pulse red every time the model says "I don't know".
+            function setStatus(kind) {
+                const map = {
+                    'Ok':            { color: '#22c55e', label: 'Online' },
+                    'Empty':         { color: '#22c55e', label: 'Online' },
+                    'Validation':    { color: '#22c55e', label: 'Online' },
+                    'Safety':        { color: '#f59e0b', label: 'Sınırlı' },
+                    'RateLimit':     { color: '#f59e0b', label: 'Yoğun' },
+                    'Network':       { color: '#ef4444', label: 'Bağlantı zayıf' },
+                    'NotConfigured': { color: '#64748b', label: 'Yapılandırılmamış' },
+                    'Unknown':       { color: '#ef4444', label: 'Hata' }
+                };
+                const entry = map[kind] || map['Ok'];
+                $('#ai-status-dot').css('background', entry.color);
+                $('#ai-status-label').text(entry.label);
+            }
+
+            // ── Send message ─────────────────────────────────────────
             async function sendMessage() {
-                var input = $('#ai-input');
-                var message = input.val().trim();
-                var btn = $('#ai-send-btn');
+                const input = $('#ai-input');
+                const message = input.val().trim();
+                const btn = $('#ai-send-btn');
 
                 if(!message) return;
 
                 input.val('');
                 input.prop('disabled', true);
                 btn.prop('disabled', true);
+                clearSuggestions();
 
-                var container = $('#ai-messages');
+                const container = $('#ai-messages');
                 container.append(`<div class="message user-message">${escapeHtml(message)}</div>`);
                 scrollToBottom();
 
-                // Placeholder bubble — fills in as tokens stream.
-                var bubbleId = 'ai-' + Date.now();
+                const bubbleId = 'ai-' + Date.now();
                 container.append(
                     `<div id="${bubbleId}" class="message ai-message" data-raw="">` +
                     `<i class="fa-solid fa-ellipsis fa-fade"></i></div>`
                 );
                 scrollToBottom();
-                var $bubble = $(`#${bubbleId}`);
+                const $bubble = $(`#${bubbleId}`);
 
                 let fullText = '';
                 let receivedAny = false;
+                let terminalKind = null;
+                let terminalSuggestions = null;
+                let usedFallback = false;
 
                 try {
                     const response = await fetch('/api/chat/stream', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json', 'Accept': 'text/event-stream' },
-                        body: JSON.stringify({ message: message })
+                        body: JSON.stringify({ message: message, conversationId: conversationId })
                     });
 
                     if (!response.ok || !response.body) throw new Error('stream-unavailable');
 
-                    const reader = response.body.getReader();
+                    const reader  = response.body.getReader();
                     const decoder = new TextDecoder('utf-8');
-                    let buffer = '';
+                    let buffer    = '';
+                    let inDoneEvent = false;
 
-                    // Drain the stream — SSE events are delimited by a blank line ("\n\n").
                     while (true) {
                         const { value, done } = await reader.read();
                         if (done) break;
@@ -170,17 +233,27 @@
                             const rawEvent = buffer.slice(0, sep);
                             buffer = buffer.slice(sep + 2);
 
-                            if (rawEvent.startsWith('event: done')) {
-                                buffer = '';
-                                break;
-                            }
-                            const dataLine = rawEvent.split('\n').find(l => l.startsWith('data: '));
+                            // SSE event format: optional "event: <name>" line, then "data: <json>".
+                            // The terminal frame uses "event: done" with a JSON payload carrying
+                            // {kind, conversationId, suggestions}.
+                            const lines = rawEvent.split('\n');
+                            const eventLine = lines.find(l => l.startsWith('event: '));
+                            const dataLine  = lines.find(l => l.startsWith('data: '));
+                            inDoneEvent = eventLine === 'event: done';
+
                             if (!dataLine) continue;
                             try {
                                 const payload = JSON.parse(dataLine.slice(6));
-                                if (payload.t) {
+                                if (inDoneEvent) {
+                                    terminalKind        = payload.kind || null;
+                                    terminalSuggestions = payload.suggestions || null;
+                                    if (payload.conversationId) {
+                                        conversationId = payload.conversationId;
+                                        sessionStorage.setItem(CONV_KEY, conversationId);
+                                    }
+                                } else if (payload.t) {
                                     if (!receivedAny) {
-                                        $bubble.empty();          // remove the typing dots
+                                        $bubble.empty();
                                         receivedAny = true;
                                     }
                                     fullText += payload.t;
@@ -192,23 +265,43 @@
                         }
                     }
 
-                    if (!receivedAny) throw new Error('empty-stream');
+                    if (!receivedAny && terminalKind === null) throw new Error('empty-stream');
                 } catch (streamError) {
-                    // Fallback: non-streaming endpoint. Keeps the widget functional behind
-                    // proxies/firewalls that strip SSE or when the model itself errors out.
+                    // Fallback: non-streaming endpoint keeps the widget functional behind proxies
+                    // that strip SSE. Returns full payload (response + kind + suggestions) at once.
+                    usedFallback = true;
                     try {
                         const fallback = await fetch('/api/chat/ask', {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ message: message })
+                            body: JSON.stringify({ message: message, conversationId: conversationId })
                         });
+                        if (!fallback.ok) throw new Error('fallback-' + fallback.status);
                         const data = await fallback.json();
                         $bubble.empty().html(linkify(escapeHtml(data.response || '')));
+                        terminalKind        = data.kind || 'Unknown';
+                        terminalSuggestions = data.suggestions || null;
+                        if (data.conversationId) {
+                            conversationId = data.conversationId;
+                            sessionStorage.setItem(CONV_KEY, conversationId);
+                        }
                     } catch (fatal) {
                         $bubble.empty()
                                .css('color', '#ef4444')
-                               .text('Connection error. Try again.');
+                               .text('Şu an bağlantım zayıf. Lütfen birkaç saniye sonra tekrar dene.');
+                        terminalKind = 'Network';
                     }
+                }
+
+                // If the bubble is still empty (terminal-only frame from preflight, etc.),
+                // fall back to a generic indicator — the message is in the log already.
+                if (!receivedAny && !usedFallback && $bubble.html().includes('fa-ellipsis')) {
+                    $bubble.empty().text('—');
+                }
+
+                setStatus(terminalKind || 'Ok');
+                if (terminalSuggestions && terminalSuggestions.length > 0) {
+                    renderSuggestions(terminalSuggestions);
                 }
 
                 input.prop('disabled', false);
@@ -221,12 +314,12 @@
 
             // Helpers
             function scrollToBottom() {
-                var div = document.getElementById('ai-messages');
+                const div = document.getElementById('ai-messages');
                 div.scrollTop = div.scrollHeight;
             }
 
             function escapeHtml(text) {
-                var map = {
+                const map = {
                     '&': '&amp;',
                     '<': '&lt;',
                     '>': '&gt;',
@@ -235,9 +328,9 @@
                 };
                 return text.replace(/[&<>"']/g, function(m) { return map[m]; });
             }
-            
+
             function linkify(text) {
-                var urlRegex = /(https?:\/\/[^\s]+)/g;
+                const urlRegex = /(https?:\/\/[^\s]+)/g;
                 return text.replace(urlRegex, function(url) {
                     return '<a href="' + url + '" target="_blank" style="color: var(--secondary); text-decoration: underline;">' + url + '</a>';
                 });

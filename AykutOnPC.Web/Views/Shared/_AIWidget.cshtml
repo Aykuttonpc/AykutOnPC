@@ -6,23 +6,30 @@
             </div>
             <div>
                 <h4 style="margin: 0; font-size: 1rem;">Aykut's Digital Twin</h4>
-                <small style="color: #a3a3a3; font-size: 0.75rem;">Online • AI Powered</small>
+                <small style="color: #a3a3a3; font-size: 0.75rem;">
+                    <span id="ai-status-dot"
+                          style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#22c55e;margin-right:4px;vertical-align:middle;"></span>
+                    <span id="ai-status-label">Online</span> • AI cevapları doğrulanmamıştır
+                </small>
             </div>
         </div>
         <button id="close-ai-widget" style="background: none; border: none; color: white; cursor: pointer;">
             <i class="fa-solid fa-xmark"></i>
         </button>
     </div>
-    
+
     <div class="ai-messages" id="ai-messages">
         <div class="message ai-message">
             Merhaba! Ben Aykut'un dijital ikiziyim. 🤖<br>
-            Projelerim, yeteneklerim veya benim hakkımda merak ettiğin her şeyi sorabilirsin.
+            Aşağıdaki başlıklardan birini seçebilir veya kendi sorunu yazabilirsin.
         </div>
     </div>
 
+    <!-- Suggestion chips: rendered on welcome + after empty/safety/validation outcomes. -->
+    <div id="ai-suggestions" class="ai-suggestions"></div>
+
     <div class="ai-input-area">
-        <input type="text" id="ai-input" placeholder="Ask me anything..." autocomplete="off">
+        <input type="text" id="ai-input" placeholder="Aykut hakkında bir şey sor..." autocomplete="off">
         <button id="ai-send-btn">
             <i class="fa-solid fa-paper-plane"></i>
         </button>
@@ -32,3 +39,29 @@
 <div id="ai-trigger-btn" class="ai-widget-trigger">
     <i class="fa-solid fa-message"></i>
 </div>
+
+<style>
+    .ai-suggestions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.4rem;
+        padding: 0.6rem 1rem 0;
+    }
+    .ai-suggestions:empty { padding: 0; }
+    .ai-suggestion-chip {
+        background: rgba(109, 40, 217, 0.12);
+        border: 1px solid rgba(109, 40, 217, 0.4);
+        color: #c4b5fd;
+        padding: 0.35rem 0.75rem;
+        border-radius: 999px;
+        font-size: 0.78rem;
+        cursor: pointer;
+        transition: 0.15s;
+        white-space: nowrap;
+    }
+    .ai-suggestion-chip:hover {
+        background: rgba(109, 40, 217, 0.25);
+        color: white;
+        transform: translateY(-1px);
+    }
+</style>
