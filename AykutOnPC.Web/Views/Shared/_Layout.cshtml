@@ -55,6 +55,11 @@
     <!-- Styles -->
     <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
     <link rel="stylesheet" href="~/css/email-picker.css" asp-append-version="true" />
+
+    <!-- RSS feed discovery for blog -->
+    <link rel="alternate" type="application/rss+xml" title="AykutOnPC Blog" href="/blog/feed.xml" />
+
+    @await RenderSectionAsync("Head", required: false)
 </head>
 <body>
     <div id="particles-js"></div>

@@ -3,6 +3,27 @@
 @{
     ViewData["Title"] = Model.Title;
     var renderedHtml = ViewData["RenderedHtml"] as string ?? string.Empty;
+
+    var description = !string.IsNullOrWhiteSpace(Model.Excerpt)
+        ? Model.Excerpt
+        : (Model.Content.Length > 200 ? Model.Content[..200] + "…" : Model.Content);
+
+    ViewData["MetaDescription"] = description;
+    ViewData["OgType"] = "article";
+
+    var publishedIso = (Model.PublishedAtUtc ?? Model.CreatedAtUtc).ToString("o");
+}
+
+@section Head {
+    <meta property="article:published_time" content="@publishedIso" />
+    <meta property="article:author" content="Aykut Çinçik" />
+    @if (!string.IsNullOrWhiteSpace(Model.Tags))
+    {
+        @foreach (var tag in Model.Tags.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+        {
+            <meta property="article:tag" content="@tag" />
+        }
+    }
 }
 
 <article style="max-width: 800px; margin: 0 auto; padding: 4rem 2rem;">

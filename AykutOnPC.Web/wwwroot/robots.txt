@@ -4,3 +4,5 @@ Disallow: /admin
 Disallow: /Admin
 Disallow: /Account
 Disallow: /api
+
+Sitemap: https://aykutonpc.com/sitemap.xml
