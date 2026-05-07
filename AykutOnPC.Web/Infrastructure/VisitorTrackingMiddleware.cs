@@ -19,9 +19,28 @@ public sealed class VisitorTrackingMiddleware(
     ILogger<VisitorTrackingMiddleware> logger,
     IServiceScopeFactory scopeFactory)
 {
-    // Paths we never want to track
+    // Paths we never want to track. Three buckets:
+    //   1. Operational endpoints (api, health, infra)
+    //   2. Static assets (handled by extension check below too, but cheap to short-circuit here)
+    //   3. Admin / authenticated areas — none of these represent real visitor interest in the
+    //      portfolio content. Without this filter the dashboard counts the owner's own admin
+    //      sessions as "visitors", which dwarfs real public traffic.
     private static readonly string[] ExcludedPrefixes =
-        ["/api/", "/health", "/_", "/favicon", "/lib/", "/css/", "/js/", "/fonts/", "/images/"];
+    [
+        // 1. Operational
+        "/api/", "/health", "/_", "/favicon",
+        // 2. Static asset folders
+        "/lib/", "/css/", "/js/", "/fonts/", "/images/",
+        // 3. Admin & auth surfaces (non-public)
+        "/admin", "/account", "/profile", "/knowledgebase",
+        "/specs", "/experience", "/education", "/chatlogs"
+    ];
+
+    // Exact (non-prefix) paths we drop as well — bot bait files etc.
+    private static readonly HashSet<string> ExcludedExactPaths = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "/robots.txt", "/sitemap.xml", "/ads.txt", "/.well-known"
+    };
 
     // Coarse bot detector — covers the vast majority of crawler traffic
     private static readonly Regex BotPattern = new(
@@ -39,6 +58,11 @@ public sealed class VisitorTrackingMiddleware(
         if (context.Request.Method != HttpMethods.Get) return;
         if (context.Response.StatusCode is 301 or 302 or 304 or 404 or >= 500) return;
         if (IsExcluded(context.Request.Path)) return;
+
+        // Authenticated admin users are the site owner — exclude their traffic entirely so the
+        // dashboard reflects real visitors, not "I clicked Refresh 40 times" sessions. This
+        // catches any future admin pages we forget to add to ExcludedPrefixes too.
+        if (context.User.Identity?.IsAuthenticated == true) return;
 
         var userAgent = context.Request.Headers.UserAgent.ToString();
         if (IsBot(userAgent)) return;
@@ -85,13 +109,15 @@ public sealed class VisitorTrackingMiddleware(
     private static bool IsExcluded(PathString path)
     {
         var value = path.Value ?? string.Empty;
+        if (ExcludedExactPaths.Contains(value)) return true;
         foreach (var prefix in ExcludedPrefixes)
             if (value.StartsWith(prefix, StringComparison.OrdinalIgnoreCase)) return true;
         // Exclude static file extensions
         return value.Contains('.') &&
                (value.EndsWith(".css") || value.EndsWith(".js") || value.EndsWith(".png") ||
                 value.EndsWith(".jpg") || value.EndsWith(".svg") || value.EndsWith(".woff2") ||
-                value.EndsWith(".ico") || value.EndsWith(".webp") || value.EndsWith(".map"));
+                value.EndsWith(".ico") || value.EndsWith(".webp") || value.EndsWith(".map") ||
+                value.EndsWith(".txt") || value.EndsWith(".xml"));
     }
 
     private static bool IsBot(string userAgent) =>
