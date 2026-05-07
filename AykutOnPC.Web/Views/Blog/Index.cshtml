@@ -1,0 +1,36 @@
+@model IReadOnlyList<AykutOnPC.Core.Entities.BlogPost>
+
+@{
+    ViewData["Title"] = "Blog";
+}
+
+<section style="max-width: 900px; margin: 0 auto; padding: 4rem 2rem;">
+    <h1 style="font-size: 3rem; margin-bottom: 0.5rem;">Blog</h1>
+    <p style="color: var(--text-muted); margin-bottom: 3rem;">Notlar, denemeler, teknik yazılar.</p>
+
+    @if (!Model.Any())
+    {
+        <p style="color: var(--text-muted);">Henüz yayınlanmış yazı yok.</p>
+    }
+
+    @foreach (var post in Model)
+    {
+        <article style="border-bottom: 1px solid rgba(255,255,255,0.1); padding: 2rem 0;">
+            <h2 style="margin-bottom: 0.5rem;">
+                <a asp-action="Details" asp-route-slug="@post.Slug" style="color: var(--text-main); text-decoration: none;">@post.Title</a>
+            </h2>
+            <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 1rem;">
+                @(post.PublishedAtUtc?.ToString("d MMMM yyyy") ?? post.CreatedAtUtc.ToString("d MMMM yyyy"))
+                @if (!string.IsNullOrWhiteSpace(post.Tags))
+                {
+                    <text> · @post.Tags</text>
+                }
+            </p>
+            @if (!string.IsNullOrWhiteSpace(post.Excerpt))
+            {
+                <p style="color: var(--text-main);">@post.Excerpt</p>
+            }
+            <a asp-action="Details" asp-route-slug="@post.Slug" style="color: var(--primary); text-decoration: none;">Devamını oku →</a>
+        </article>
+    }
+</section>

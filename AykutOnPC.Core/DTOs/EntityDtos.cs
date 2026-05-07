@@ -98,6 +98,32 @@ public class UpdateKnowledgeEntryDto : CreateKnowledgeEntryDto
     public int Id { get; set; }
 }
 
+public class CreateBlogPostDto
+{
+    [Required(ErrorMessage = "Title is required.")]
+    [StringLength(200)]
+    public string Title { get; set; } = string.Empty;
+
+    [StringLength(220)]
+    public string? Slug { get; set; }
+
+    [StringLength(500)]
+    public string? Excerpt { get; set; }
+
+    [Required(ErrorMessage = "Content is required.")]
+    public string Content { get; set; } = string.Empty;
+
+    [StringLength(300)]
+    public string Tags { get; set; } = string.Empty;
+
+    public bool IsPublished { get; set; }
+}
+
+public class UpdateBlogPostDto : CreateBlogPostDto
+{
+    public int Id { get; set; }
+}
+
 public class ChatRequestDto
 {
     [Required(ErrorMessage = "Message cannot be empty.")]

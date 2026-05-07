@@ -1,0 +1,53 @@
+@model AykutOnPC.Core.DTOs.UpdateBlogPostDto
+
+@{
+    ViewData["Title"] = "Edit Blog Post";
+    Layout = "_AdminLayout";
+}
+
+<h1 style="margin-bottom: 2rem;">Edit Blog Post</h1>
+
+<div class="card" style="height: auto; max-height: none;">
+    <form asp-action="Edit" method="post">
+        @Html.AntiForgeryToken()
+        <input type="hidden" asp-for="Id" />
+
+        <div style="margin-bottom: 1.5rem;">
+            <label style="display: block; margin-bottom: 0.5rem; color: var(--secondary);">Title</label>
+            <input asp-for="Title" class="form-control" style="width: 100%; padding: 0.8rem; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color: white; border-radius: 8px;" required />
+            <span asp-validation-for="Title" style="color: #ef4444; font-size: 0.85rem;"></span>
+        </div>
+
+        <div style="margin-bottom: 1.5rem;">
+            <label style="display: block; margin-bottom: 0.5rem; color: var(--secondary);">Slug</label>
+            <input asp-for="Slug" class="form-control" style="width: 100%; padding: 0.8rem; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color: white; border-radius: 8px;" />
+        </div>
+
+        <div style="margin-bottom: 1.5rem;">
+            <label style="display: block; margin-bottom: 0.5rem; color: var(--secondary);">Excerpt</label>
+            <textarea asp-for="Excerpt" rows="2" class="form-control" style="width: 100%; padding: 0.8rem; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color: white; border-radius: 8px;"></textarea>
+        </div>
+
+        <div style="margin-bottom: 1.5rem;">
+            <label style="display: block; margin-bottom: 0.5rem; color: var(--secondary);">Content (Markdown)</label>
+            <textarea asp-for="Content" rows="14" class="form-control" style="width: 100%; padding: 0.8rem; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color: white; border-radius: 8px; font-family: monospace;" required></textarea>
+            <span asp-validation-for="Content" style="color: #ef4444; font-size: 0.85rem;"></span>
+        </div>
+
+        <div style="margin-bottom: 1.5rem;">
+            <label style="display: block; margin-bottom: 0.5rem; color: var(--secondary);">Tags</label>
+            <input asp-for="Tags" class="form-control" style="width: 100%; padding: 0.8rem; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color: white; border-radius: 8px;" />
+        </div>
+
+        <div style="margin-bottom: 2rem;">
+            <label style="color: var(--secondary); display: flex; gap: 0.5rem; align-items: center; cursor: pointer;">
+                <input asp-for="IsPublished" type="checkbox" /> <span>Yayında</span>
+            </label>
+        </div>
+
+        <div style="display: flex; gap: 1rem;">
+            <button type="submit" class="btn-primary">Update</button>
+            <a asp-action="Index" style="padding: 1rem 2rem; color: var(--text-muted); text-decoration: none;">Cancel</a>
+        </div>
+    </form>
+</div>

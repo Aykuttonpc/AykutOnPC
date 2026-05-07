@@ -1,0 +1,37 @@
+@model AykutOnPC.Core.Entities.BlogPost
+
+@{
+    ViewData["Title"] = Model.Title;
+    var renderedHtml = ViewData["RenderedHtml"] as string ?? string.Empty;
+}
+
+<article style="max-width: 800px; margin: 0 auto; padding: 4rem 2rem;">
+    <a asp-action="Index" style="color: var(--text-muted); text-decoration: none; font-size: 0.9rem;">← Tüm yazılar</a>
+
+    <h1 style="font-size: 2.5rem; margin: 1rem 0 0.5rem 0;">@Model.Title</h1>
+    <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 3rem;">
+        @(Model.PublishedAtUtc?.ToString("d MMMM yyyy") ?? Model.CreatedAtUtc.ToString("d MMMM yyyy"))
+        @if (!string.IsNullOrWhiteSpace(Model.Tags))
+        {
+            <text> · @Model.Tags</text>
+        }
+    </p>
+
+    <div class="blog-content" style="line-height: 1.7; color: var(--text-main);">
+        @Html.Raw(renderedHtml)
+    </div>
+</article>
+
+<style>
+    .blog-content h1, .blog-content h2, .blog-content h3 { margin: 2rem 0 1rem 0; color: var(--secondary); }
+    .blog-content p { margin-bottom: 1.2rem; }
+    .blog-content code { background: rgba(255,255,255,0.08); padding: 0.15rem 0.4rem; border-radius: 4px; font-size: 0.9em; }
+    .blog-content pre { background: rgba(0,0,0,0.4); padding: 1rem; border-radius: 8px; overflow-x: auto; margin-bottom: 1.2rem; }
+    .blog-content pre code { background: transparent; padding: 0; }
+    .blog-content blockquote { border-left: 3px solid var(--primary); padding-left: 1rem; color: var(--text-muted); margin: 1.5rem 0; }
+    .blog-content ul, .blog-content ol { margin: 0 0 1.2rem 1.5rem; }
+    .blog-content a { color: var(--primary); }
+    .blog-content img { max-width: 100%; border-radius: 8px; }
+    .blog-content table { border-collapse: collapse; margin-bottom: 1.2rem; }
+    .blog-content table th, .blog-content table td { border: 1px solid rgba(255,255,255,0.1); padding: 0.5rem 1rem; }
+</style>

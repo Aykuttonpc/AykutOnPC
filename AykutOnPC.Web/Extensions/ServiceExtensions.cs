@@ -116,6 +116,8 @@ public static class ServiceExtensions
         services.AddScoped<IExperienceService, ExperienceService>();
         services.AddScoped<ISpecService, SpecService>();
         services.AddScoped<IKnowledgeBaseService, KnowledgeBaseService>();
+        services.AddScoped<IBlogPostService, BlogPostService>();
+        services.AddSingleton<IMarkdownRenderer, MarkdownRenderer>();
 
         // AI: Groq via Semantic Kernel + OpenAI-compatible handler
         services.AddTransient<OpenAIToTargetHandler>(sp =>
