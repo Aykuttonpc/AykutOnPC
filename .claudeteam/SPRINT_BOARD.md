@@ -5,10 +5,10 @@
 
 ## Aktif Sprint
 
-- **Sprint:** #2 — Bootstrap Tamamlama + RAG Brief
+- **Sprint:** #3 — Blog Modülü
 - **Başlangıç:** 2026-05-07
-- **Hedef bitiş:** 2026-05-12 (3-5 gün)
-- **Sprint hedefi:** Proje context'ini koddan derive edip yazılı hale getirmek (PROJECT_CONTEXT, ARCHITECTURE, TECH_RADAR), RAG migration için brief üretmek, dependency audit'inde tespit edilen Critical vuln'u kapatmak.
+- **Hedef bitiş:** 2026-05-21 (1.5-2 hafta)
+- **Sprint hedefi:** Markdown tabanlı blog: admin CRUD + public listing/detail + RSS + SEO. KnowledgeBase pattern'ini takip et — sapma yok.
 
 ---
 
@@ -16,7 +16,14 @@
 
 | ID | Başlık | Sahip | Tahmin | Notlar |
 |---|---|---|---|---|
-| T-D-011 | **Production smoke test** — vuln-fix sonrası chat/auth runtime doğrulaması | Aykut (kullanıcı) | 5dk | `bash scripts/smoke-test.sh https://aykutonpc.com` + chat'e 1 mesaj. Dev'de chat fail eder (memory feedback) — sadece prod'da güvenli test edilir. |
+| T-#3-003 | `IBlogPostService` + `BlogPostService` (Infrastructure) | Senior Dev #1 | 1h | Caching: kısa TTL public listing için (10dk gibi KB pattern'i) |
+| T-#3-004 | Admin `BlogController` + Razor view (CRUD) | Senior Dev #1 + #3 | 3h | KnowledgeBase admin layout'u kopyala, markdown editor (textarea + preview) |
+| T-#3-005 | Public `BlogController` (listing `/blog`, detail `/blog/{slug}`) | Senior Dev #1 + #3 | 2h | Pagination yok (kişisel blog, az post). Tags filtreleme MVP dışı. |
+| T-#3-006 | Markdown rendering — Markdig + HtmlSanitizer | Senior Dev #3 + AppSec | 1.5h | XSS savunması — admin trust'lansa bile defansif sanitize. NuGet: `Markdig`, `HtmlSanitizer`. |
+| T-#3-007 | SEO: `<meta>` (title, description, OG, Twitter Card) + `sitemap.xml` entry | Senior Dev #3 | 1h | Sitemap blog post'lara `<url>` ekler |
+| T-#3-008 | RSS feed `/blog/feed.xml` | Senior Dev #1 | 1h | `application/rss+xml`, son 20 post |
+| T-#3-009 | ChatLogs/Profile/KB ile schema overlap kontrolü + index sanity check | Senior Dev #2 | 30dk | EXPLAIN ANALYZE listing query |
+| T-#3-010 | Manuel test path: yarat → publish → public list → detail → XSS attempt → RSS validate | QA + Aykut | 30dk | Production smoke + iframe/script tag XSS test |
 | T-D-009 | `Pgvector.EntityFrameworkCore` package'ı POC için Trial — Sprint #4'e bırakıldı | Innovation Architect | — | Brief yazıldı, implementation Sprint #4 |
 
 ## 🚧 In Progress
@@ -31,9 +38,12 @@
 
 ## ✅ Done
 
+### Sprint #2 (kapatıldı 2026-05-07)
+
 | ID | Başlık | Tamamlanan | Notlar |
 |---|---|---|---|
-| **T-D-007** 🚨 | **Critical vuln fix** SemanticKernel 1.54 → 1.75 + transitive `Microsoft.Extensions.*` 9.0.5 → 10.0.7 | 2026-05-07 | Build ✅ (0 warn, 0 err) · `dotnet list package --vulnerable` ✅ temiz. Runtime test prod smoke'a kalır (T-D-011). |
+| T-D-011 | Production smoke test (vuln-fix sonrası) | 2026-05-07 | Kullanıcı onayı ile pass. Sprint #2 closed. |
+| **T-D-007** 🚨 | **Critical vuln fix** SemanticKernel 1.54 → 1.75 + transitive `Microsoft.Extensions.*` 9.0.5 → 10.0.7 | 2026-05-07 | Build ✅ (0 warn, 0 err) · `dotnet list package --vulnerable` ✅ temiz. Production smoke ✅. Commit `d3a1887`. |
 | T-D-008 | `System.IdentityModel.Tokens.Jwt` 8.3.0 → 8.18.0 | 2026-05-07 | Auth regression — compile OK, JWT validation API'si değişmemiş. |
 | T-D-001 | `PROJECT_CONTEXT.md` doldur | 2026-05-07 | Status: Production. Hedef kullanıcılar + KPI'lar + Out-of-scope yazıldı. |
 | T-D-002 | `ARCHITECTURE.md` doldur | 2026-05-07 | Stack, components, integrations, kritik veri akışları, mimari kararlar, tech debt listesi. |
@@ -50,14 +60,6 @@
 ---
 
 ## Sıradaki Sprint'ler (planlama)
-
-- **Sprint #3 — Blog modülü** (1.5-2 hafta)
-  - `BlogPost` entity (markdown content + slug + published_at + tags)
-  - Admin CRUD (mevcut KnowledgeBase pattern'i)
-  - Public `/blog` listing + `/blog/{slug}` detail (Razor View)
-  - RSS feed (`/blog/feed.xml`)
-  - SEO: `<meta>` tags, sitemap.xml entry
-  - Test: yeni blog post submit + publish + render path
 
 - **Sprint #4 — RAG migration** (2-3 hafta)
   - `RESEARCH_BRIEFS/rag-migration.md` plan'ına göre

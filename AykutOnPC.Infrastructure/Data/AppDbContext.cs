@@ -14,6 +14,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     public DbSet<Profile> Profiles { get; set; }
     public DbSet<PageView> PageViews { get; set; }
     public DbSet<ChatLog> ChatLogs { get; set; }
+    public DbSet<BlogPost> BlogPosts { get; set; }
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
@@ -79,6 +80,14 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             // Admin dashboard list (recency + filter by kind)
             entity.HasIndex(e => e.CreatedAtUtc).HasDatabaseName("IX_ChatLogs_CreatedAtUtc");
             entity.HasIndex(e => e.Kind).HasDatabaseName("IX_ChatLogs_Kind");
+        });
+
+        modelBuilder.Entity<BlogPost>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.HasIndex(e => e.Slug).IsUnique().HasDatabaseName("IX_BlogPosts_Slug");
+            // Public listing: "give me published posts ordered by publish date"
+            entity.HasIndex(e => new { e.IsPublished, e.PublishedAtUtc }).HasDatabaseName("IX_BlogPosts_Published_PublishedAt");
         });
     }
 }
