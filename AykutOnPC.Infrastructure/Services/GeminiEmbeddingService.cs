@@ -57,7 +57,11 @@ public sealed class GeminiEmbeddingService : IEmbeddingService
             Content = new EmbedContent
             {
                 Parts = [new EmbedPart { Text = text }]
-            }
+            },
+            // gemini-embedding-001 returns 3072 dim by default; outputDimensionality
+            // truncates+normalizes to match our fixed vector(768) DB column. Older
+            // text-embedding-004 ignored this flag and always returned 768.
+            OutputDimensionality = _settings.Dimensions
         };
 
         for (var attempt = 1; attempt <= _settings.MaxRetries; attempt++)
@@ -124,8 +128,9 @@ public sealed class GeminiEmbeddingService : IEmbeddingService
     // Wire types kept private — not domain concepts, just JSON shape.
     private sealed class EmbedRequest
     {
-        [JsonPropertyName("model")]   public string Model   { get; set; } = string.Empty;
-        [JsonPropertyName("content")] public EmbedContent Content { get; set; } = new();
+        [JsonPropertyName("model")]                public string Model   { get; set; } = string.Empty;
+        [JsonPropertyName("content")]              public EmbedContent Content { get; set; } = new();
+        [JsonPropertyName("outputDimensionality")] public int OutputDimensionality { get; set; }
     }
     private sealed class EmbedContent
     {

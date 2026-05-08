@@ -2,8 +2,9 @@ namespace AykutOnPC.Core.Configuration;
 
 /// <summary>
 /// Configuration for the embedding model used by RAG retrieval. Defaults target
-/// Gemini text-embedding-004 (768 dim) — the column in the DB is fixed at vector(768),
-/// so changing <see cref="Dimensions"/> requires a migration.
+/// Gemini gemini-embedding-001 forced to 768 dim via outputDimensionality (the
+/// model's native default is 3072). DB column is fixed at vector(768), so
+/// changing <see cref="Dimensions"/> requires a migration.
 /// </summary>
 public class EmbeddingSettings
 {
@@ -12,7 +13,10 @@ public class EmbeddingSettings
     /// <summary>API key — falls back to AiSettings.ApiKey (GEMINI_API_KEY) if blank.</summary>
     public string ApiKey { get; set; } = string.Empty;
 
-    public string ModelId { get; set; } = "text-embedding-004";
+    // Google retired `text-embedding-004` from v1beta in 2026 — replaced with
+    // `gemini-embedding-001` (3072 dim default, but supports outputDimensionality
+    // to match any schema width). Old name returns 404 NOT_FOUND.
+    public string ModelId { get; set; } = "gemini-embedding-001";
 
     /// <summary>Native Gemini endpoint (NOT the OpenAI-compat one — embed body shape differs).</summary>
     public string BaseUrl { get; set; } = "https://generativelanguage.googleapis.com/v1beta";
