@@ -23,7 +23,12 @@ services:
 
   # ── PostgreSQL 16 ──────────────────────────────────────────
   db:
-    image: postgres:16-alpine
+    # Keep pgvector image — Sprint #4 (commit ecfbcda) installed the vector
+    # extension and a vector(768) column on KnowledgeEntries. The code revert
+    # (d4bde58) does NOT undo the DB schema, so dropping back to stock
+    # postgres:16-alpine breaks type resolution and crashes the DB. Volume
+    # layout is identical, no data migration needed.
+    image: pgvector/pgvector:pg16
     container_name: aykutonpc-db
     restart: unless-stopped
     networks: [backend]

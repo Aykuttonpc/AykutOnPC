@@ -31,7 +31,8 @@ services:
           memory: 256M
 
   db:
-    image: postgres:15-alpine
+    # Keep pgvector image — see docker-compose.prod.yml comment.
+    image: pgvector/pgvector:pg15
     environment:
       - POSTGRES_USER=postgres
       - POSTGRES_PASSWORD=${DB_PASSWORD:-DevOnlyPassword2026!}
