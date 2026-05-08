@@ -91,11 +91,22 @@ ok "Image built successfully."
 PREVIOUS_IMAGE=$(docker inspect --format='{{.Image}}' "$APP_CONTAINER" 2>/dev/null || echo "none")
 log "[4/6] Previous image recorded for rollback: ${PREVIOUS_IMAGE:0:20}..."
 
-# ── Step 5: Rolling restart (web only — DB & Redis untouched) ─
-log "[5/7] Rolling restart of web container..."
-docker compose -f "$COMPOSE_FILE" --env-file "$ENV_FILE" \
-    up -d --no-deps web
-ok "Web container restarted."
+# ── Step 5a: Pull image updates for sidecar services (db / redis) ─────
+# `--no-deps web` below only restarts the web container, which means a change
+# to the `db` or `redis` image directive in compose was being silently ignored:
+# the new image got pulled by no one and the old container kept running. Sprint #4
+# (commit ecfbcda) tripped on this — the pgvector image swap never reached
+# production, so `CREATE EXTENSION vector` failed and chat went down.
+# Fix: pull every service's image, then let `up -d` recreate any container
+# whose image (or other config) actually changed. Containers with no diff are
+# left running — `up -d` is a no-op for them.
+log "[5/7] Pulling updated images (db, redis, web)..."
+docker compose -f "$COMPOSE_FILE" --env-file "$ENV_FILE" pull \
+    >> "$LOG_FILE" 2>&1 || warn "Pull encountered errors, continuing."
+
+log "[5/7] Reconciling all services with compose state..."
+docker compose -f "$COMPOSE_FILE" --env-file "$ENV_FILE" up -d
+ok "Services reconciled (web rebuilt, db/redis recreated only if image changed)."
 
 # ── Step 6: Reload nginx (config volume-mounted from repo) ────
 # Nginx config is mounted via ./nginx/conf.d:/etc/nginx/conf.d:ro, so a `git
