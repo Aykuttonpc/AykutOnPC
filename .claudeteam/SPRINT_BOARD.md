@@ -25,7 +25,6 @@
 | T-#3-009 | ChatLogs/Profile/KB ile schema overlap kontrolü + index sanity check | Senior Dev #2 | 30dk | EXPLAIN ANALYZE listing query |
 | T-#3-010 | Manuel test path: yarat → publish → public list → detail → XSS attempt → RSS validate | QA + Aykut | 30dk | Production smoke + iframe/script tag XSS test |
 | **T-#3-011** | **Bot regex sıkılaştırma** + UA/IP breakdown analizi | Senior Dev #1 + AppSec | 1.5h | `VisitorTrackingMiddleware.BotPattern`'a ekle: `zgrab\|censys\|leakix\|modat\|vision[h]?eight\|l9scan\|nuclei\|nikto\|wpscan\|sqlmap\|masscan`. Bonus: aynı `HashedIp`'ten 42-visit yapan eski iPhone analizi (bot mu tek kullanıcı mı). |
-| **T-#3-012** | VPS runbook'a "IP ban recovery" akışı ekle | SRE | 30dk | `D:\AYKUTONPC-VPS-REHBERI.md` "🚨 ACİL KURTARMA" altına yeni alt-bölüm: nft IP-DROP senaryosu (`nft flush ruleset` + `rm fail2ban.sqlite3` + docker restart). Bugün öğrenildi, runbook hafızasına yaz. |
 | **T-#3-013** | Visitor Intelligence — veri retention policy | Senior Dev #2 + DevOps | 1h | DB'de 2 günlük veri var (volume reset mi, manuel mi belirsiz). 30 günden eski `PageViews` ve `ChatLogs` siler bir cron + retention'ı `ARCHITECTURE.md`'ye yaz. |
 | T-D-009 | `Pgvector.EntityFrameworkCore` package'ı POC için Trial — Sprint #4'e bırakıldı | Innovation Architect | — | Brief yazıldı, implementation Sprint #4 |
 
@@ -45,6 +44,7 @@
 
 | ID | Başlık | Tamamlanan | Notlar |
 |---|---|---|---|
+| T-#3-012 | VPS runbook "IP ban recovery" bölümü eklendi | 2026-05-08 | `D:\AYKUTONPC-VPS-REHBERI.md` line 119+ — Adım 5 sonrası yeni "🚨 ACİL KURTARMA — IP-spesifik nft DROP" bölümü (Belirti / Sebep / Tanı / Recovery / Önlem). RUNBOOKS index 2026-05-08'e güncel. |
 | 🚨 INC-001 | **Production lockout recovery + VI investigation** | 2026-05-08 | SSH 22 timeout (içerde nft IP-DROP + fail2ban kalıcı DB ban) → Web Console + Rescue mode + `nft flush ruleset` + `rm fail2ban.sqlite3` ile recovery. Detay: ADR-010. 8-sorgu VI tanı: 124 kayıt 2 günlük, 5 bot regex kaçağı, 42-visit aynı UA, admin bypass ✅. |
 
 ### Sprint #2 (kapatıldı 2026-05-07)
