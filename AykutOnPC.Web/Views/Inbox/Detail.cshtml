@@ -1,0 +1,109 @@
+@model AykutOnPC.Core.Entities.ChatLog
+@{
+    ViewData["Title"] = "Inbox — " + (Model.UserMessage.Length > 60 ? Model.UserMessage[..60] + "…" : Model.UserMessage);
+    Layout = "_AdminLayout";
+
+    // Pre-filled "promote to KB" form values:
+    //   Topic   = visitor question (admin will tighten it)
+    //   Content = bot reply (admin reviews before saving)
+    var prefillTopic   = Model.UserMessage.Length > 200 ? Model.UserMessage[..200] : Model.UserMessage;
+    var prefillContent = Model.BotResponse ?? string.Empty;
+}
+
+<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+    <h1 style="margin: 0;">Inbox Detail</h1>
+    <a asp-action="Index" style="color: var(--text-muted); text-decoration: none;">← Inbox'a dön</a>
+</div>
+
+@if (TempData["InboxError"] is string msgErr)
+{
+    <div style="background: rgba(239,68,68,0.1); border: 1px solid #ef4444; padding: 1rem; border-radius: 8px; margin-bottom: 1rem;">
+        ❌ @msgErr
+    </div>
+}
+
+<!-- Q & A panel -->
+<div class="card" style="padding: 1.5rem; margin-bottom: 1.5rem; height: auto; max-height: none;">
+    <div style="margin-bottom: 1.25rem;">
+        <div style="color: var(--text-muted); font-size: 0.85rem; margin-bottom: 0.4rem;">
+            Ziyaretçi sorusu — @Model.CreatedAtUtc.ToString("dd MMM yyyy HH:mm 'UTC'")
+        </div>
+        <div style="white-space: pre-wrap; font-size: 1.05rem;">@Model.UserMessage</div>
+    </div>
+    <div style="border-top: 1px solid rgba(255,255,255,0.08); padding-top: 1.25rem;">
+        <div style="color: var(--text-muted); font-size: 0.85rem; margin-bottom: 0.4rem;">
+            Bot cevabı — @Model.ModelId · @Model.LatencyMs ms · @Model.Kind
+        </div>
+        <div style="white-space: pre-wrap; color: var(--text-muted);">@(Model.BotResponse ?? "—")</div>
+    </div>
+
+    @if (Model.LinkedKnowledgeEntryId.HasValue)
+    {
+        <div style="margin-top: 1.25rem; padding: 0.75rem; background: rgba(6,182,212,0.1);
+                    border-left: 3px solid var(--secondary); border-radius: 4px;">
+            <i class="fa-solid fa-brain"></i>
+            Bu turn KB entry #@Model.LinkedKnowledgeEntryId'a bağlandı.
+        </div>
+    }
+</div>
+
+<!-- Mark reviewed + admin note -->
+<form asp-action="ToggleReview" asp-route-id="@Model.Id" method="post" style="margin-bottom: 1.5rem;">
+    @Html.AntiForgeryToken()
+    <input type="hidden" name="reviewed" value="@(!Model.IsReviewed)" />
+    <div class="card" style="padding: 1.25rem; height: auto; max-height: none;">
+        <label style="display: block; color: var(--text-muted); font-size: 0.85rem; margin-bottom: 0.4rem;">
+            Admin notu (opsiyonel)
+        </label>
+        <textarea name="adminNote" rows="2"
+                  style="width: 100%; padding: 0.6rem; background: rgba(0,0,0,0.3);
+                         border: 1px solid rgba(255,255,255,0.1); color: var(--text-main);
+                         border-radius: 6px; font-family: inherit;">@Model.AdminNote</textarea>
+        <button type="submit"
+                style="margin-top: 0.75rem; padding: 0.6rem 1.25rem;
+                       background: @(Model.IsReviewed ? "rgba(255,255,255,0.1)" : "var(--primary)");
+                       color: white; border: none; border-radius: 6px; cursor: pointer;">
+            @(Model.IsReviewed ? "Reviewed işaretini kaldır" : "Reviewed olarak işaretle")
+        </button>
+    </div>
+</form>
+
+<!-- Promote to KB -->
+@if (!Model.LinkedKnowledgeEntryId.HasValue)
+{
+    <h2 style="margin-bottom: 1rem;">KB'ye Ekle</h2>
+    <p style="color: var(--text-muted); margin-bottom: 1rem;">
+        Cevabı düzenle, KB'ye geçsin → bir sonraki RAG retrieval'da bu cevap retrieve edilebilir hale gelir.
+    </p>
+    <form asp-action="PromoteToKb" asp-route-id="@Model.Id" method="post">
+        @Html.AntiForgeryToken()
+        <div class="card" style="padding: 1.5rem; height: auto; max-height: none;">
+            <div style="margin-bottom: 1rem;">
+                <label style="display: block; color: var(--text-muted); font-size: 0.85rem; margin-bottom: 0.4rem;">Topic</label>
+                <input type="text" name="topic" maxlength="200" required value="@prefillTopic"
+                       style="width: 100%; padding: 0.6rem; background: rgba(0,0,0,0.3);
+                              border: 1px solid rgba(255,255,255,0.1); color: var(--text-main);
+                              border-radius: 6px;" />
+            </div>
+            <div style="margin-bottom: 1rem;">
+                <label style="display: block; color: var(--text-muted); font-size: 0.85rem; margin-bottom: 0.4rem;">Content (Aykut'un cevabı — düzelt)</label>
+                <textarea name="content" rows="8" required
+                          style="width: 100%; padding: 0.6rem; background: rgba(0,0,0,0.3);
+                                 border: 1px solid rgba(255,255,255,0.1); color: var(--text-main);
+                                 border-radius: 6px; font-family: inherit;">@prefillContent</textarea>
+            </div>
+            <div style="margin-bottom: 1rem;">
+                <label style="display: block; color: var(--text-muted); font-size: 0.85rem; margin-bottom: 0.4rem;">Keywords (virgül ayrıklı, opsiyonel)</label>
+                <input type="text" name="keywords"
+                       style="width: 100%; padding: 0.6rem; background: rgba(0,0,0,0.3);
+                              border: 1px solid rgba(255,255,255,0.1); color: var(--text-main);
+                              border-radius: 6px;" />
+            </div>
+            <button type="submit"
+                    style="padding: 0.7rem 1.5rem; background: var(--secondary);
+                           color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 600;">
+                <i class="fa-solid fa-brain"></i> KB'ye Ekle ve Bağla
+            </button>
+        </div>
+    </form>
+}

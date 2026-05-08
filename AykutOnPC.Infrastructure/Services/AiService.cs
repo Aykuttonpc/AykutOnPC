@@ -182,7 +182,24 @@ public class AiService : IAiService
         IReadOnlyList<ChatLog> history,
         CancellationToken cancellationToken)
     {
-        var entries = await _kb.GetCachedForChatAsync(_settings.ContextLimit, cancellationToken);
+        // RAG path first when enabled. If it returns empty (embedding service down,
+        // KB not yet backfilled, or query embed failed) we fall back to the legacy
+        // KB-stuffing path so the chat keeps working — graceful degradation beats
+        // "the chat is broken because the embedding API is rate-limited".
+        IReadOnlyList<KnowledgeEntry> entries;
+        if (_settings.UseRagRetrieval)
+        {
+            entries = await _kb.SearchSimilarAsync(userMessage, _settings.RetrievalTopK, cancellationToken);
+            if (entries.Count == 0)
+            {
+                _logger.LogInformation("RAG retrieval returned 0 entries — falling back to KB stuffing.");
+                entries = await _kb.GetCachedForChatAsync(_settings.ContextLimit, cancellationToken);
+            }
+        }
+        else
+        {
+            entries = await _kb.GetCachedForChatAsync(_settings.ContextLimit, cancellationToken);
+        }
 
         var contextBuilder = new StringBuilder();
         contextBuilder.AppendLine(_settings.SystemPrompt);

@@ -19,6 +19,10 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     {
         base.OnModelCreating(modelBuilder);
 
+        // pgvector — required for KnowledgeEntry.Embedding (vector(768)) + HNSW index.
+        // Migration generates "CREATE EXTENSION IF NOT EXISTS vector".
+        modelBuilder.HasPostgresExtension("vector");
+
         // ── Force every DateTime to UTC on save ─────────────────────────────
         // Npgsql 6+ requires Kind=Utc for `timestamp with time zone` columns.
         // ASP.NET model-binding from <input type="date"> / "datetime-local"
@@ -61,6 +65,9 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
         {
              entity.HasKey(e => e.Id);
              entity.Property(e => e.Topic).HasMaxLength(200);
+             // 768-dim embedding (Gemini text-embedding-004 default). Index added
+             // manually in the migration as raw SQL — EF doesn't know HNSW yet.
+             entity.Property(e => e.Embedding).HasColumnType("vector(768)");
         });
 
         modelBuilder.Entity<PageView>(entity =>
@@ -70,6 +77,9 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             entity.HasIndex(e => e.VisitedAtUtc).HasDatabaseName("IX_PageViews_VisitedAtUtc");
             entity.HasIndex(e => new { e.VisitedAtUtc, e.Path }).HasDatabaseName("IX_PageViews_VisitedAtUtc_Path");
             entity.HasIndex(e => e.HashedIp).HasDatabaseName("IX_PageViews_HashedIp");
+            // Unique-visitor count uses COALESCE(VisitorId, HashedIp); index on VisitorId
+            // keeps the DISTINCT scan cheap.
+            entity.HasIndex(e => e.VisitorId).HasDatabaseName("IX_PageViews_VisitorId");
         });
 
         modelBuilder.Entity<ChatLog>(entity =>
@@ -80,6 +90,8 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             // Admin dashboard list (recency + filter by kind)
             entity.HasIndex(e => e.CreatedAtUtc).HasDatabaseName("IX_ChatLogs_CreatedAtUtc");
             entity.HasIndex(e => e.Kind).HasDatabaseName("IX_ChatLogs_Kind");
+            // Inbox sort: unreviewed first, newest within each bucket
+            entity.HasIndex(e => new { e.IsReviewed, e.CreatedAtUtc }).HasDatabaseName("IX_ChatLogs_Reviewed_CreatedAt");
         });
 
         modelBuilder.Entity<BlogPost>(entity =>

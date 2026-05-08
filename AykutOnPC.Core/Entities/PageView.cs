@@ -20,6 +20,14 @@ public class PageView
     [MaxLength(64)]
     public string HashedIp { get; set; } = string.Empty;
 
+    /// <summary>
+    /// Anonymous client-generated UUID. Stored in localStorage + first-party cookie so it
+    /// survives IP rotation (mobile→WiFi, IPv6 rotation) and identifies the same visitor
+    /// across networks — unlike <see cref="HashedIp"/>, which rotates daily by salt.
+    /// Null on the very first page load (cookie not yet round-tripped) and when JS is disabled.
+    /// </summary>
+    public Guid? VisitorId { get; set; }
+
     [MaxLength(512)]
     public string? UserAgent { get; set; }
 

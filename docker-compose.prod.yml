@@ -23,11 +23,11 @@ services:
 
   # ── PostgreSQL 16 ──────────────────────────────────────────
   db:
-    # Keep pgvector image — Sprint #4 (commit ecfbcda) installed the vector
-    # extension and a vector(768) column on KnowledgeEntries. The code revert
-    # (d4bde58) does NOT undo the DB schema, so dropping back to stock
-    # postgres:16-alpine breaks type resolution and crashes the DB. Volume
-    # layout is identical, no data migration needed.
+    # pgvector image — official postgres:16 binary + vector extension pre-installed.
+    # Volume + config compatible with stock postgres:16-alpine, no data migration.
+    # Required for KnowledgeEntry.Embedding (RAG, T-#4-001). Do NOT downgrade to
+    # stock postgres unless DB schema (vector column + extension) is dropped first
+    # — type resolution crashes if the binary is missing while the schema references it.
     image: pgvector/pgvector:pg16
     container_name: aykutonpc-db
     restart: unless-stopped

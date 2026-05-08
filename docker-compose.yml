@@ -31,7 +31,9 @@ services:
           memory: 256M
 
   db:
-    # Keep pgvector image — see docker-compose.prod.yml comment.
+    # pgvector image — pre-loaded with vector extension. Volume layout identical
+    # to stock postgres:15-alpine, no data migration. Required for RAG (T-#4-001).
+    # See docker-compose.prod.yml for the longer rationale.
     image: pgvector/pgvector:pg15
     environment:
       - POSTGRES_USER=postgres
