@@ -3,25 +3,26 @@ using System;
 using AykutOnPC.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
-using Pgvector;
 
 #nullable disable
 
 namespace AykutOnPC.Infrastructure.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260508220117_AddVisitorId")]
+    partial class AddVisitorId
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("ProductVersion", "9.0.4")
+                .HasAnnotation("ProductVersion", "9.0.0")
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
-            NpgsqlModelBuilderExtensions.HasPostgresExtension(modelBuilder, "vector");
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
             modelBuilder.Entity("AykutOnPC.Core.Entities.BlogPost", b =>
@@ -87,10 +88,6 @@ namespace AykutOnPC.Infrastructure.Migrations
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
 
-                    b.Property<string>("AdminNote")
-                        .HasMaxLength(1000)
-                        .HasColumnType("character varying(1000)");
-
                     b.Property<string>("BotResponse")
                         .HasMaxLength(8000)
                         .HasColumnType("character varying(8000)");
@@ -106,18 +103,12 @@ namespace AykutOnPC.Infrastructure.Migrations
                         .HasMaxLength(64)
                         .HasColumnType("character varying(64)");
 
-                    b.Property<bool>("IsReviewed")
-                        .HasColumnType("boolean");
-
                     b.Property<string>("Kind")
                         .IsRequired()
                         .HasMaxLength(20)
                         .HasColumnType("character varying(20)");
 
                     b.Property<int>("LatencyMs")
-                        .HasColumnType("integer");
-
-                    b.Property<int?>("LinkedKnowledgeEntryId")
                         .HasColumnType("integer");
 
                     b.Property<string>("ModelId")
@@ -149,9 +140,6 @@ namespace AykutOnPC.Infrastructure.Migrations
 
                     b.HasIndex("ConversationId", "TurnIndex")
                         .HasDatabaseName("IX_ChatLogs_Conv_Turn");
-
-                    b.HasIndex("IsReviewed", "CreatedAtUtc")
-                        .HasDatabaseName("IX_ChatLogs_Reviewed_CreatedAt");
 
                     b.ToTable("ChatLogs");
                 });
@@ -236,9 +224,6 @@ namespace AykutOnPC.Infrastructure.Migrations
                     b.Property<string>("Content")
                         .IsRequired()
                         .HasColumnType("text");
-
-                    b.Property<Vector>("Embedding")
-                        .HasColumnType("vector(768)");
 
                     b.Property<string>("Keywords")
                         .IsRequired()

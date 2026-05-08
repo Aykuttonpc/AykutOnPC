@@ -23,7 +23,10 @@ services:
 
   # ── PostgreSQL 16 ──────────────────────────────────────────
   db:
-    image: postgres:16-alpine
+    # pgvector image is the official postgres:16 binary + the vector extension
+    # pre-installed. Volume + config compatible with postgres:16-alpine — no
+    # data migration needed. Required for KnowledgeEntry.Embedding (RAG, T-#4-001).
+    image: pgvector/pgvector:pg16
     container_name: aykutonpc-db
     restart: unless-stopped
     networks: [backend]

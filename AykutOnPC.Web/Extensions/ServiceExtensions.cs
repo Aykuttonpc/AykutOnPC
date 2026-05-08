@@ -21,6 +21,7 @@ public static class ServiceExtensions
     {
         services.Configure<JwtSettings>(configuration.GetSection(JwtSettings.SectionName));
         services.Configure<AiSettings>(configuration.GetSection(AiSettings.SectionName));
+        services.Configure<EmbeddingSettings>(configuration.GetSection(EmbeddingSettings.SectionName));
         services.Configure<SeedDataSettings>(configuration.GetSection(SeedDataSettings.SectionName));
         services.Configure<GitHubSettings>(configuration.GetSection(GitHubSettings.SectionName));
         services.Configure<SecuritySettings>(configuration.GetSection(SecuritySettings.SectionName));
@@ -30,6 +31,16 @@ public static class ServiceExtensions
         {
             if (string.IsNullOrEmpty(options.ApiKey))
                 options.ApiKey = configuration["GEMINI_API_KEY"] ?? string.Empty;
+        });
+
+        // Embedding shares the Gemini API key — avoids a second secret to manage.
+        // Explicit EmbeddingSettings:ApiKey wins if set; otherwise inherits AiSettings.
+        services.PostConfigure<EmbeddingSettings>(options =>
+        {
+            if (string.IsNullOrEmpty(options.ApiKey))
+                options.ApiKey = configuration["GeminiSettings:ApiKey"]
+                              ?? configuration["GEMINI_API_KEY"]
+                              ?? string.Empty;
         });
 
         services.PostConfigure<SeedDataSettings>(options =>
@@ -100,6 +111,9 @@ public static class ServiceExtensions
                         maxRetryDelay: TimeSpan.FromSeconds(10),
                         errorCodesToAdd: null);
                     sqlOptions.CommandTimeout(90);
+                    // pgvector EF integration — registers Vector type mapping for
+                    // KnowledgeEntry.Embedding. Without this Npgsql throws on read/write.
+                    sqlOptions.UseVector();
                 }));
 
         return services;
@@ -153,6 +167,11 @@ public static class ServiceExtensions
         });
 
         services.AddScoped<IAiService, AiService>();
+
+        // Embedding service — typed HttpClient; native Gemini :embedContent endpoint.
+        // Singleton lifetime is fine because GeminiEmbeddingService is stateless and
+        // HttpClient handles its own connection pooling.
+        services.AddHttpClient<IEmbeddingService, GeminiEmbeddingService>();
 
         // GitHub (typed HttpClient)
         services.AddHttpClient<IGitHubService, GitHubService>();

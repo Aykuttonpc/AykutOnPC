@@ -16,6 +16,16 @@ public class AiSettings
     public int ContextLimit { get; set; } = 50;
 
     /// <summary>
+    /// When true, the chat path retrieves the top-K KB entries by embedding similarity
+    /// (RAG). When false or when retrieval returns nothing, falls back to the legacy
+    /// "stuff every entry into the prompt" path. Feature flag for fast rollback.
+    /// </summary>
+    public bool UseRagRetrieval { get; set; } = true;
+
+    /// <summary>How many KB entries the RAG retrieval includes per chat turn.</summary>
+    public int RetrievalTopK { get; set; } = 5;
+
+    /// <summary>
     /// How many prior turns of the same conversation to replay to the model. 0 disables memory.
     /// Each pair (user + bot) counts as 2 messages — keep small to control token cost.
     /// </summary>

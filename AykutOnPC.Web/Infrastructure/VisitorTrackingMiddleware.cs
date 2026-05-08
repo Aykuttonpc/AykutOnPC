@@ -55,6 +55,14 @@ public sealed class VisitorTrackingMiddleware(
     // Daily salt rotates at midnight UTC — makes IPs untraceable across days
     private static string DailySalt => DateTime.UtcNow.ToString("yyyyMMdd");
 
+    // Anonymous visitor identifier. Set client-side from localStorage UUID, mirrored
+    // to a first-party cookie so the server receives it on every page navigation.
+    // Survives IP rotation across mobile/WiFi/IPv6 — the same person was being
+    // counted as 3 uniques otherwise (INC-001 finding 2026-05-08). KVKK rationale:
+    // anonymous, no identification possible from UUID alone — see ADR-011.
+    private const string VisitorIdCookie = "AykutOnPC.VisitorId";
+    private const string VisitorIdHeader = "X-Visitor-Id";
+
     public async Task InvokeAsync(HttpContext context)
     {
         await next(context);   // Process request first — capture status codes
@@ -76,9 +84,10 @@ public sealed class VisitorTrackingMiddleware(
         // Once the response completes, ASP.NET recycles HttpContext (and its request
         // services scope) for the next request — accessing Request.Path/Headers/etc
         // inside Task.Run race-conditions with the next request and silently fails.
-        var path    = context.Request.Path.ToString().ToLowerInvariant();
-        var referer = TruncateSafe(context.Request.Headers.Referer.ToString(), 512);
-        var ip      = GetClientIp(context);
+        var path      = context.Request.Path.ToString().ToLowerInvariant();
+        var referer   = TruncateSafe(context.Request.Headers.Referer.ToString(), 512);
+        var ip        = GetClientIp(context);
+        var visitorId = GetVisitorId(context);
 
         // Fire-and-forget — analytics must not slow down the response.
         // We use IServiceScopeFactory (singleton, root-bound) instead of the request-
@@ -93,11 +102,12 @@ public sealed class VisitorTrackingMiddleware(
 
                 var pageView = new PageView
                 {
-                    Path        = path,
-                    Referrer    = referer,
-                    HashedIp    = HashIp(ip),
-                    UserAgent   = TruncateSafe(userAgent, 512),
-                    DeviceType  = DetectDevice(userAgent),
+                    Path         = path,
+                    Referrer     = referer,
+                    HashedIp     = HashIp(ip),
+                    UserAgent    = TruncateSafe(userAgent, 512),
+                    DeviceType   = DetectDevice(userAgent),
+                    VisitorId    = visitorId,
                     VisitedAtUtc = DateTime.UtcNow
                 };
 
@@ -135,6 +145,18 @@ public sealed class VisitorTrackingMiddleware(
         if (!string.IsNullOrEmpty(forwarded))
             return forwarded.Split(',')[0].Trim();
         return context.Connection.RemoteIpAddress?.ToString() ?? "unknown";
+    }
+
+    /// <summary>
+    /// Reads the anonymous visitor UUID from cookie (page navigations) or X-Visitor-Id
+    /// header (XHR/fetch). Cookie wins because it's sent on every navigation; header
+    /// is a fallback for SPA-style fetches that may run before the cookie round-trips.
+    /// </summary>
+    private static Guid? GetVisitorId(HttpContext context)
+    {
+        var raw = context.Request.Cookies[VisitorIdCookie]
+                  ?? context.Request.Headers[VisitorIdHeader].FirstOrDefault();
+        return Guid.TryParse(raw, out var id) ? id : null;
     }
 
     private static string HashIp(string ip)

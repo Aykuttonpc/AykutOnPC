@@ -95,6 +95,63 @@ public sealed class ChatLogService(
             .OrderBy(c => c.TurnIndex)
             .ToListAsync(ct);
 
+    public async Task<PagedResult<ChatLog>> GetInboxAsync(
+        bool? unreviewedOnly, int page, int pageSize, CancellationToken ct = default)
+    {
+        page     = page < 1 ? 1 : page;
+        pageSize = pageSize is < 1 or > 200 ? 25 : pageSize;
+
+        // Inbox shows real visitor questions only — filter out short-circuited /
+        // safety / not-configured noise. Those are operational, not Q&A material.
+        var q = db.ChatLogs.AsNoTracking()
+            .Where(c => c.Kind == nameof(ChatErrorKind.Ok) && !c.ShortCircuited);
+
+        if (unreviewedOnly == true) q = q.Where(c => !c.IsReviewed);
+
+        var total = await q.CountAsync(ct);
+
+        var items = await q
+            .OrderBy(c => c.IsReviewed)            // false first
+            .ThenByDescending(c => c.CreatedAtUtc) // newest within each bucket
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .ToListAsync(ct);
+
+        return new PagedResult<ChatLog>
+        {
+            Items    = items,
+            Total    = total,
+            Page     = page,
+            PageSize = pageSize
+        };
+    }
+
+    public async Task<ChatLog?> GetByIdAsync(long id, CancellationToken ct = default)
+        => await db.ChatLogs.FirstOrDefaultAsync(c => c.Id == id, ct);
+
+    public async Task MarkReviewedAsync(long id, bool reviewed, string? adminNote, CancellationToken ct = default)
+    {
+        var log = await db.ChatLogs.FirstOrDefaultAsync(c => c.Id == id, ct);
+        if (log is null) return;
+        log.IsReviewed = reviewed;
+        if (adminNote is not null) log.AdminNote = adminNote;
+        await db.SaveChangesAsync(ct);
+    }
+
+    public async Task LinkToKnowledgeEntryAsync(long id, int knowledgeEntryId, CancellationToken ct = default)
+    {
+        var log = await db.ChatLogs.FirstOrDefaultAsync(c => c.Id == id, ct);
+        if (log is null) return;
+        log.LinkedKnowledgeEntryId = knowledgeEntryId;
+        log.IsReviewed = true;
+        await db.SaveChangesAsync(ct);
+    }
+
+    public async Task<int> CountUnreviewedAsync(CancellationToken ct = default)
+        => await db.ChatLogs.AsNoTracking()
+            .Where(c => c.Kind == nameof(ChatErrorKind.Ok) && !c.ShortCircuited && !c.IsReviewed)
+            .CountAsync(ct);
+
     public async Task<ChatLogStatsDto> GetStatsAsync(CancellationToken ct = default)
     {
         var now      = DateTime.UtcNow;

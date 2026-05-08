@@ -22,4 +22,22 @@ public interface IChatLogService
 
     /// <summary>Aggregate stats panel.</summary>
     Task<ChatLogStatsDto> GetStatsAsync(CancellationToken ct = default);
+
+    /// <summary>
+    /// Inbox view — all turns where <c>Kind = Ok</c>, unreviewed first, newest within
+    /// each bucket. Drives the admin "questions waiting for me" workflow.
+    /// </summary>
+    Task<PagedResult<ChatLog>> GetInboxAsync(bool? unreviewedOnly, int page, int pageSize, CancellationToken ct = default);
+
+    /// <summary>Single ChatLog by Id — for the inbox detail view.</summary>
+    Task<ChatLog?> GetByIdAsync(long id, CancellationToken ct = default);
+
+    /// <summary>Mark reviewed / unreviewed and optionally save an admin note.</summary>
+    Task MarkReviewedAsync(long id, bool reviewed, string? adminNote, CancellationToken ct = default);
+
+    /// <summary>Link a ChatLog turn to a created KnowledgeEntry — closes the feedback loop.</summary>
+    Task LinkToKnowledgeEntryAsync(long id, int knowledgeEntryId, CancellationToken ct = default);
+
+    /// <summary>Count of unreviewed Ok-kind turns — used by the layout nav badge.</summary>
+    Task<int> CountUnreviewedAsync(CancellationToken ct = default);
 }
