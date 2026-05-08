@@ -42,9 +42,14 @@ public sealed class VisitorTrackingMiddleware(
         "/robots.txt", "/sitemap.xml", "/ads.txt", "/.well-known"
     };
 
-    // Coarse bot detector — covers the vast majority of crawler traffic
+    // Coarse bot detector — covers the vast majority of crawler traffic.
+    // First group: classic crawler keywords. Second group: security scanners that
+    // pose as Mozilla but reveal themselves in the UA (zgrab, Censys, LeakIX, etc.).
+    // Findings ADR-010 — 5 scanner families had been bypassing the original regex.
     private static readonly Regex BotPattern = new(
-        @"(bot|crawler|spider|slurp|baiduspider|googlebot|bingbot|yandex|duckduck|facebot|ia_archiver|scrapy|wget|curl|python-requests)",
+        @"(bot|crawler|spider|slurp|baiduspider|googlebot|bingbot|yandex|duckduck|facebot|ia_archiver|scrapy|wget|curl|python-requests" +
+        @"|zgrab|censys|leakix|modat|visionheight|l9scan|nuclei|nikto|wpscan|sqlmap|masscan|httpx" +
+        @"|netcraft|paloalto|qualys|shodan|expanse|fofa|netsystemsresearch|stretchoid|gdnplus|internet-?measurement)",
         RegexOptions.IgnoreCase | RegexOptions.Compiled);
 
     // Daily salt rotates at midnight UTC — makes IPs untraceable across days
