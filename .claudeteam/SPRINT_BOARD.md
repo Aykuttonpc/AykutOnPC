@@ -42,8 +42,8 @@
 
 | ID | Başlık | Tamamlanan | Notlar |
 |---|---|---|---|
-| T-#3-011 | Bot regex sıkılaştırma | 2026-05-08 | `VisitorTrackingMiddleware.BotPattern`: 20+ scanner family eklendi (zgrab, Censys, LeakIX, Modat, VisionHeight, Nuclei, Nikto, WPScan, sqlmap, masscan, httpx, Netcraft, Qualys, Shodan, Expanse, FOFA, …). Commit `6808377`. UA/IP breakdown analiz Sprint #4'e ertelendi (RAG ile çakışmasın). |
-| T-#3-013 | VI veri retention policy + cron | 2026-05-08 | `scripts/prune-pageviews.sh` (PV=30g, CL=90g, env var override, auto-VACUUM). `ARCHITECTURE.md` "Veri Retention Policy" bölümü. Crontab production'da kurulu. |
+| T-#3-011 | Bot regex sıkılaştırma + **prod smoke** | 2026-05-08 | `VisitorTrackingMiddleware.BotPattern`: 20+ scanner family eklendi (zgrab, Censys, LeakIX, Modat, VisionHeight, Nuclei, Nikto, WPScan, sqlmap, masscan, httpx, Netcraft, Qualys, Shodan, Expanse, FOFA, …). Commit `6808377`. **Prod doğrulama:** 6 bot UA curl → **0 kayıt** ✅, 1 real UA Chrome → 1 kayıt ✅. UA/IP breakdown analiz Sprint #4'e ertelendi (RAG ile çakışmasın). |
+| T-#3-013 | VI veri retention policy + cron + **kontamine veri purge** | 2026-05-08 | `scripts/prune-pageviews.sh` (PV=30g, CL=90g, env var override, auto-VACUUM). `ARCHITECTURE.md` "Veri Retention Policy" bölümü. **Production:** kontamine 124 PageView DELETE'lendi (count 124→0), crontab `0 4 * * *` aktif, script `/opt/aykutonpc/scripts/prune-pageviews.sh` deploy edildi. |
 | T-#3-012 | VPS runbook "IP ban recovery" bölümü eklendi | 2026-05-08 | `D:\AYKUTONPC-VPS-REHBERI.md` line 119+ — Adım 5 sonrası yeni "🚨 ACİL KURTARMA — IP-spesifik nft DROP" bölümü (Belirti / Sebep / Tanı / Recovery / Önlem). RUNBOOKS index 2026-05-08'e güncel. |
 | 🚨 INC-001 | **Production lockout recovery + VI investigation** | 2026-05-08 | SSH 22 timeout (içerde nft IP-DROP + fail2ban kalıcı DB ban) → Web Console + Rescue mode + `nft flush ruleset` + `rm fail2ban.sqlite3` ile recovery. Detay: ADR-010. 8-sorgu VI tanı: 124 kayıt 2 günlük, 5 bot regex kaçağı, 42-visit aynı UA, admin bypass ✅. |
 
