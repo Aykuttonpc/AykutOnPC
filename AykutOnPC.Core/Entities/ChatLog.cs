@@ -44,23 +44,6 @@ public class ChatLog
     public string? UserAgent { get; set; }
 
     public DateTime CreatedAtUtc { get; set; } = DateTime.UtcNow;
-
-    /// <summary>
-    /// Admin marked this turn as reviewed. Inbox sorting uses this to surface
-    /// unreviewed turns at the top.
-    /// </summary>
-    public bool IsReviewed { get; set; }
-
-    /// <summary>Free-form admin note ("KB'ye eklendi", "anlamsız soru", vb.).</summary>
-    [MaxLength(1000)]
-    public string? AdminNote { get; set; }
-
-    /// <summary>
-    /// FK to <see cref="KnowledgeEntry"/> when the turn was answered by promoting
-    /// the bot reply (or admin's edit) into the KB. Null otherwise. Drives the
-    /// closed feedback loop: visitor question → KB entry → next RAG retrieval.
-    /// </summary>
-    public int? LinkedKnowledgeEntryId { get; set; }
 }
 
 /// <summary>

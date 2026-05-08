@@ -71,20 +71,6 @@ if (args.Contains(SeedAdminCommand.ArgFlag))
     return;
 }
 
-if (args.Contains(BackfillEmbeddingsCommand.ArgFlag))
-{
-    var backfillLogger = app.Services.GetRequiredService<ILoggerFactory>().CreateLogger("BackfillEmbeddings");
-    Environment.ExitCode = await BackfillEmbeddingsCommand.RunAsync(app.Services, backfillLogger);
-    return;
-}
-
-if (args.Contains(EvalRagCommand.ArgFlag))
-{
-    var evalLogger = app.Services.GetRequiredService<ILoggerFactory>().CreateLogger("EvalRag");
-    Environment.ExitCode = await EvalRagCommand.RunAsync(app.Services, evalLogger);
-    return;
-}
-
 // ──────────────────────────────────────────────
 // Middleware Pipeline
 // ──────────────────────────────────────────────

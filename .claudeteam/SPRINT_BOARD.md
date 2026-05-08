@@ -38,15 +38,7 @@
 
 ## ✅ Done
 
-### Sprint #4 (devam ediyor)
-
-| ID | Başlık | Tamamlanan | Notlar |
-|---|---|---|---|
-| T-#4-002 | LocalStorage anonim visitor ID | 2026-05-09 | `PageView.VisitorId Guid?` + EF migration `AddVisitorId` + `IX_PageViews_VisitorId`. `VisitorTrackingMiddleware` cookie+header okuma. `_Layout.cshtml` <head> inline UUID gen + cookie set. `VisitorAnalyticsService` unique sorgular `COALESCE(VisitorId::text, HashedIp)`. ADR-011. Build ✅ 0w/0e. Lokal davranış doğrulama prod'da yapılacak (dev chat fail expected). |
-| T-#4-001 | RAG migration (Faz 1-6) | 2026-05-09 | **Faz 1:** PGvector image (dev=pg15, prod=pg16) + `Pgvector.EntityFrameworkCore` 0.3.0 + EF Core 9.0.4 bump. Migration `AddKnowledgeEmbedding` (CREATE EXTENSION + vector(768) + HNSW raw SQL). `KnowledgeEntry.Embedding Vector?`. **Faz 2:** `IEmbeddingService` + `GeminiEmbeddingService` (native :embedContent, exp backoff retry, transient classification). `EmbeddingSettings` config. **Faz 3:** KB Create/Update embed compute, `SearchSimilarAsync(query, topK)` (cosine via `<=>` HNSW), `BackfillMissingEmbeddingsAsync()`, `--backfill-embeddings` CLI. **Faz 4:** `AiService.BuildChatHistoryAsync` RAG path (UseRagRetrieval=true, RetrievalTopK=5) + fallback to KB-stuffing on retrieval miss. **Faz 5:** `.claudeteam/EVAL_SET/rag-eval.json` (15 Q&A) + `--eval-rag` CLI keyword-check. **Faz 6:** ADR-012. Build ✅ 0w/0e. |
-| T-#4-003 | Visitor Question Inbox | 2026-05-09 | `ChatLog`'a `IsReviewed`, `AdminNote`, `LinkedKnowledgeEntryId` + EF migration `AddChatLogInboxFields` + `IX_ChatLogs_Reviewed_CreatedAt`. `IChatLogService` Inbox metodları (`GetInboxAsync`, `GetByIdAsync`, `MarkReviewedAsync`, `LinkToKnowledgeEntryAsync`, `CountUnreviewedAsync`). Yeni `InboxController` `/admin/inbox` (Index, Detail, ToggleReview, PromoteToKb). Razor view'lar. `_AdminLayout` `@inject` ile badge + Inbox link. **Closed feedback loop** — soru gelir, Aykut KB'ye eklerse `KnowledgeBaseService.CreateAsync` otomatik embed eder, bir sonraki RAG retrieval'da entry bulunur. Build ✅ 0w/0e. |
-
-### Sprint #3 (kapatıldı 2026-05-08)
+### Sprint #3 (devam ediyor)
 
 | ID | Başlık | Tamamlanan | Notlar |
 |---|---|---|---|
@@ -80,7 +72,7 @@
 
 ## Sıradaki Sprint'ler (planlama)
 
-- **Sprint #4 — RAG migration + visitor ID + Question Inbox** (2-3 hafta + ~6-7h ek iş)
+- **Sprint #4 — RAG migration + LocalStorage visitor ID** (2-3 hafta + ~3h paralel iş)
 
   **T-#4-001 — RAG migration** (ana iş, 2-3 hafta)
   - `RESEARCH_BRIEFS/rag-migration.md` plan'ına göre Faz 1-6
@@ -92,13 +84,6 @@
   - **Çözüm:** `PageView`'a `VisitorId GUID?` kolonu + EF migration. `VisitorTrackingMiddleware`'a `X-Visitor-Id` request header okuma + yoksa server response header set etme. `_Layout.cshtml`'a ~10 satır JS (localStorage'dan oku, yoksa `crypto.randomUUID()` ile gen, sonraki fetch/navigation request'lerinde header ile yolla). Dashboard unique query: `COUNT(DISTINCT COALESCE("VisitorId"::text, "HashedIp"))`.
   - **KVKK:** anonim UUID, geri çevrilemez, kullanıcı clear-storage ile silebilir, GA-pattern. Cookie değil → cookie banner gerekmez.
   - **Trade-off:** Browser private mode'da reset olur (kabul edilebilir, çoğu analytics aynı), JS gerek (mevcut sistem JS-free idi — bu mimari değişiklik, ADR-011 yazılacak).
-
-  **T-#4-003 — Visitor Question Inbox** (RAG sonrası, ~3-4h, **Pasif / KB-besleme**)
-  - **Amaç:** ChatLog'dan kullanıcı sorularını admin Inbox'ta göster. Aykut cevaplar → KB'ye eklenir → bir sonraki RAG sorusunda otomatik yayılır (closed feedback loop).
-  - **Çözüm:** `ChatLog` entity'sine 3 alan ekle (`IsReviewed bool`, `AdminNote string?`, `LinkedKnowledgeEntryId int?`) + EF migration. Yeni `/Admin/Inbox` sayfası — liste (yeni→eski, "review edilmemiş" badge, tarih/cevaplanmamış filtre) + detay (soru + bot cevabı + "KB'ye Ekle" butonu prefilled `/admin/knowledgebase/create` form'a yönlendirir). KB kaydı sonrası `LinkedKnowledgeEntryId` set + `IsReviewed=true`. Admin nav'da opsiyonel "Inbox (N)" badge.
-  - **RAG sinerjisi:** RAG kurulduktan sonra similarity score < 0.6 ise "muhtemelen yetersiz cevap" flag'i Inbox'ta öne çıkar. Eval set bu inbox'tan beslenir (gerçek soru + Aykut onaylı cevap = altın etiket).
-  - **Sıra:** RAG Faz 6 (adoption) bittikten sonra. Bağımsız da yapılabilir, ama RAG sonrası "yetersiz cevap" detection daha doğru.
-  - **Kapsam dışı (MVP değil):** Aktif iki-yönlü iletişim (e-posta ile soran kişiye cevap gönderme). Anonim ziyaretçiye geri dönüş yok — cevap KB'ye girer, gelecek kullanıcılar yararlanır.
 
 - **Backlog (sırası belirsiz):**
   - Test projesi kurulumu (xUnit/NUnit, integration test, Testcontainers ile Postgres)

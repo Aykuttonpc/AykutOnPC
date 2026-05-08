@@ -31,10 +31,7 @@ services:
           memory: 256M
 
   db:
-    # pgvector ships pg15 + pg16 binaries pre-loaded with the vector extension.
-    # Volume layout is identical to stock postgres:15-alpine — no data migration
-    # needed. Required for KnowledgeEntry.Embedding (RAG, T-#4-001).
-    image: pgvector/pgvector:pg15
+    image: postgres:15-alpine
     environment:
       - POSTGRES_USER=postgres
       - POSTGRES_PASSWORD=${DB_PASSWORD:-DevOnlyPassword2026!}

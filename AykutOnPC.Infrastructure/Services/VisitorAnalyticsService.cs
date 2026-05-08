@@ -41,14 +41,9 @@ public sealed class VisitorAnalyticsService(
         var totalMonth = await db.PageViews
             .CountAsync(p => p.VisitedAtUtc >= monthAgo, ct);
 
-        // Unique visitor count uses COALESCE(VisitorId, HashedIp): same person across
-        // mobile/WiFi/IPv6 rotations carries the same VisitorId UUID (set client-side).
-        // Falls back to HashedIp for first page load (cookie not yet round-tripped) or
-        // JS-disabled clients. Translates to:
-        //   COUNT(DISTINCT COALESCE("VisitorId"::text, "HashedIp"))
         var uniqueToday = await db.PageViews
             .Where(p => p.VisitedAtUtc >= todayUtc)
-            .Select(p => p.VisitorId.HasValue ? p.VisitorId.Value.ToString() : p.HashedIp)
+            .Select(p => p.HashedIp)
             .Distinct()
             .CountAsync(ct);
 
@@ -75,8 +70,7 @@ public sealed class VisitorAnalyticsService(
             .OrderByDescending(d => d.Count)
             .ToList();
 
-        // Daily trend: last 30 days. UniqueVisitors uses the same COALESCE strategy
-        // as uniqueToday above so the daily series and the "today" pill agree.
+        // Daily trend: last 30 days
         var dailyRaw = await db.PageViews
             .Where(p => p.VisitedAtUtc >= monthAgo)
             .GroupBy(p => p.VisitedAtUtc.Date)
@@ -84,9 +78,7 @@ public sealed class VisitorAnalyticsService(
             {
                 Date            = g.Key,
                 Visits          = g.Count(),
-                UniqueVisitors  = g.Select(p => p.VisitorId.HasValue ? p.VisitorId.Value.ToString() : p.HashedIp)
-                                   .Distinct()
-                                   .Count()
+                UniqueVisitors  = g.Select(p => p.HashedIp).Distinct().Count()
             })
             .OrderBy(g => g.Date)
             .ToListAsync(ct);

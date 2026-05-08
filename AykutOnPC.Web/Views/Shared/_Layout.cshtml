@@ -59,32 +59,6 @@
     <!-- RSS feed discovery for blog -->
     <link rel="alternate" type="application/rss+xml" title="AykutOnPC Blog" href="/blog/feed.xml" />
 
-    <script>
-        // Anonymous visitor ID — localStorage UUID mirrored to a first-party cookie so the
-        // server receives it on every page navigation. Survives mobile→WiFi IP rotation
-        // (the same person was being counted as 3 uniques otherwise — INC-001 finding).
-        // KVKK rationale: anonymous, no identification possible, see ADR-011.
-        // Inline + early so the cookie is set before the next navigation, not after page load.
-        (function () {
-            try {
-                var KEY = 'aykutonpc.visitor.id';
-                var COOKIE = 'AykutOnPC.VisitorId';
-                var UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-                var id = localStorage.getItem(KEY);
-                if (!id || !UUID_RE.test(id)) {
-                    id = (crypto && crypto.randomUUID) ? crypto.randomUUID() : null;
-                    if (id) localStorage.setItem(KEY, id);
-                }
-                if (id) {
-                    // 2 yıl, SameSite=Lax (top-level navigation'da gönderilir),
-                    // Secure'ı production https'de tarayıcı kendisi zorlar.
-                    document.cookie = COOKIE + '=' + id + '; Max-Age=63072000; Path=/; SameSite=Lax';
-                    window.__visitorId = id;
-                }
-            } catch (e) { /* localStorage disabled / private mode — fallback to HashedIp */ }
-        })();
-    </script>
-
     @await RenderSectionAsync("Head", required: false)
 </head>
 <body>

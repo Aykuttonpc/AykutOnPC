@@ -1,9 +1,3 @@
-@inject AykutOnPC.Core.Interfaces.IChatLogService ChatLogs
-@{
-    // Inbox badge — single small query per admin page render. Cached at the EF
-    // change-tracker level only; if it shows stale data the page refresh fixes it.
-    var inboxBadgeCount = await ChatLogs.CountUnreviewedAsync();
-}
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -56,16 +50,6 @@
             <a asp-controller="KnowledgeBase" asp-action="Index" class="admin-nav-item"><i class="fa-solid fa-brain"></i> AI Knowledge</a>
             <a asp-controller="BlogPosts" asp-action="Index" class="admin-nav-item"><i class="fa-solid fa-newspaper"></i> Blog Posts</a>
             <a asp-controller="ChatLogs" asp-action="Index" class="admin-nav-item"><i class="fa-solid fa-comments"></i> Chat Logs</a>
-            <a asp-controller="Inbox" asp-action="Index" class="admin-nav-item">
-                <i class="fa-solid fa-inbox"></i> Inbox
-                @if (inboxBadgeCount > 0)
-                {
-                    <span style="margin-left: auto; background: var(--primary); color: white;
-                                 padding: 0.1rem 0.55rem; border-radius: 999px; font-size: 0.75rem;">
-                        @inboxBadgeCount
-                    </span>
-                }
-            </a>
             <a asp-controller="Specs" asp-action="Index" class="admin-nav-item"><i class="fa-solid fa-bolt"></i> Skills (Specs)</a>
             <a asp-controller="Experience" asp-action="Index" class="admin-nav-item"><i class="fa-solid fa-briefcase"></i> Experience</a>
             <a asp-controller="Education" asp-action="Index" class="admin-nav-item"><i class="fa-solid fa-graduation-cap"></i> Education</a>
