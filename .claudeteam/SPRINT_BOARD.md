@@ -24,8 +24,6 @@
 | T-#3-008 | RSS feed `/blog/feed.xml` | Senior Dev #1 | 1h | `application/rss+xml`, son 20 post |
 | T-#3-009 | ChatLogs/Profile/KB ile schema overlap kontrolü + index sanity check | Senior Dev #2 | 30dk | EXPLAIN ANALYZE listing query |
 | T-#3-010 | Manuel test path: yarat → publish → public list → detail → XSS attempt → RSS validate | QA + Aykut | 30dk | Production smoke + iframe/script tag XSS test |
-| **T-#3-011** | **Bot regex sıkılaştırma** + UA/IP breakdown analizi | Senior Dev #1 + AppSec | 1.5h | `VisitorTrackingMiddleware.BotPattern`'a ekle: `zgrab\|censys\|leakix\|modat\|vision[h]?eight\|l9scan\|nuclei\|nikto\|wpscan\|sqlmap\|masscan`. Bonus: aynı `HashedIp`'ten 42-visit yapan eski iPhone analizi (bot mu tek kullanıcı mı). |
-| **T-#3-013** | Visitor Intelligence — veri retention policy | Senior Dev #2 + DevOps | 1h | DB'de 2 günlük veri var (volume reset mi, manuel mi belirsiz). 30 günden eski `PageViews` ve `ChatLogs` siler bir cron + retention'ı `ARCHITECTURE.md`'ye yaz. |
 | T-D-009 | `Pgvector.EntityFrameworkCore` package'ı POC için Trial — Sprint #4'e bırakıldı | Innovation Architect | — | Brief yazıldı, implementation Sprint #4 |
 
 ## 🚧 In Progress
@@ -44,6 +42,8 @@
 
 | ID | Başlık | Tamamlanan | Notlar |
 |---|---|---|---|
+| T-#3-011 | Bot regex sıkılaştırma | 2026-05-08 | `VisitorTrackingMiddleware.BotPattern`: 20+ scanner family eklendi (zgrab, Censys, LeakIX, Modat, VisionHeight, Nuclei, Nikto, WPScan, sqlmap, masscan, httpx, Netcraft, Qualys, Shodan, Expanse, FOFA, …). Commit `6808377`. UA/IP breakdown analiz Sprint #4'e ertelendi (RAG ile çakışmasın). |
+| T-#3-013 | VI veri retention policy + cron | 2026-05-08 | `scripts/prune-pageviews.sh` (PV=30g, CL=90g, env var override, auto-VACUUM). `ARCHITECTURE.md` "Veri Retention Policy" bölümü. Crontab production'da kurulu. |
 | T-#3-012 | VPS runbook "IP ban recovery" bölümü eklendi | 2026-05-08 | `D:\AYKUTONPC-VPS-REHBERI.md` line 119+ — Adım 5 sonrası yeni "🚨 ACİL KURTARMA — IP-spesifik nft DROP" bölümü (Belirti / Sebep / Tanı / Recovery / Önlem). RUNBOOKS index 2026-05-08'e güncel. |
 | 🚨 INC-001 | **Production lockout recovery + VI investigation** | 2026-05-08 | SSH 22 timeout (içerde nft IP-DROP + fail2ban kalıcı DB ban) → Web Console + Rescue mode + `nft flush ruleset` + `rm fail2ban.sqlite3` ile recovery. Detay: ADR-010. 8-sorgu VI tanı: 124 kayıt 2 günlük, 5 bot regex kaçağı, 42-visit aynı UA, admin bypass ✅. |
 

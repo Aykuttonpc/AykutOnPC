@@ -84,6 +84,24 @@ Tüm istekler `VisitorTrackingMiddleware`'den geçer → IP SHA-256 hash + günl
 - **Rate limit politikaları:** ChatApi 10/min, General 60/min, Login 5/min/IP.
 - **Auth cookie name:** `AykutOnPC.AuthToken`.
 
+## Veri Retention Policy
+
+Üretilen telemetri verisi **otomatik temizlenir** — `scripts/prune-pageviews.sh` cron'la günlük çalışır:
+
+| Tablo | Retention | Sebep |
+|---|---|---|
+| `PageViews` | **30 gün** | KVKK-uyumlu (anonim hash de olsa minimum data); dashboard 30 gün gösteriyor |
+| `ChatLogs` | **90 gün** | Conversation memory + admin review; uzun vadeli regression için yeterli |
+
+**Cron entry (deploy user, root crontab):**
+```
+0 4 * * * /opt/aykutonpc/scripts/prune-pageviews.sh
+```
+
+**Override:** `PAGEVIEW_RETENTION_DAYS` ve `CHATLOG_RETENTION_DAYS` env var ile.
+**Log:** `/var/log/aykutonpc-prune.log`.
+**Vakum:** 100+ satır silindiğinde otomatik `VACUUM ANALYZE` (autovacuum yedek).
+
 ## Bilinen Sınırlamalar / Tech Debt
 
 | Item | Sebep | Sprint hedefi |
