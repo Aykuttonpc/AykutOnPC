@@ -34,6 +34,170 @@
 
 ---
 
+## ADR-010 — Visitor Intelligence Investigation + Production Lockout Incident
+
+- **Tarih:** 2026-05-08
+- **Durum:** Resolved
+- **Karar verenler:** SRE, AppSec, Senior Dev #1, QA, Aykut
+
+**Bağlam:**
+Production'daki Visitor Intelligence dashboard verileri (33 visits today, 27 unique) Aykut'a gerçekçi gelmedi → DB raw sorgu için SSH gerekti. Bağlanma sırasında port 22 timeout, oysa site (80/443) sağlıklıydı. Hetzner Cloud Firewall ekli değildi → sorun **iç tarafta**: fail2ban'ın kalıcı ban DB'si (`/var/lib/fail2ban/fail2ban.sqlite3`) + nftables'ta IP-spesifik DROP kuralı bizim IP'lerimizi blokluyordu. Brute force IP'leri (213.177.179.80, 94.156.152.18, vb.) auth aşamasına geliyor, bizimkiler TCP-level düşüyordu.
+
+**Recovery akışı:**
+1. Hetzner Web Console'a giriş → Caps Lock + paste sorunu (yeni Console UI'da clipboard ikonu yok, password yanlış)
+2. Rescue mode + SSH key auth → orijinal disk mount + chroot ile UFW file-level disable (`ENABLED=no`)
+3. Reboot normal → port 22 hâlâ timeout (fail2ban DB persisted)
+4. Web Console'dan: `fail2ban-client unban --all` → `systemctl stop fail2ban` → `rm fail2ban.sqlite3` → `nft flush ruleset` → `systemctl restart docker` → `systemctl restart ssh` → port 22 açıldı
+5. SSH bağlantı geri → UFW + fail2ban geri etkinleştirildi → 8-sorgu VI tanı koşturuldu
+
+**VI Bulgular:**
+- **DB sadece 2 günlük veri (124 kayıt, 07-08 May)** — pruning policy veya volume reset belirsiz
+- **Bot regex 5 scanner kaçırıyor:** `zgrab`, `Censys`, `LeakIX`, `Modat`, `VisionHeight` (kontaminasyon ~15 visit)
+- **Aynı UA'dan 42 visit** (eski iPhone iOS 13.2.3 — 2019 release, bot ihtimali yüksek)
+- **Admin path leak: 0 row** ✅ — authenticated bypass çalışıyor
+- **Feed/sitemap traffic: 0 row** — yeni eklendi, henüz keşfedilmedi (normal)
+- "Kimler girmiş?" cevabı: **bilemeyiz** (IP'ler SHA-256 + daily salt, by design GDPR)
+
+**Aksiyonlar (Sprint #3 todo):**
+- **T-#3-011:** Bot regex sıkılaştırma + UA/IP breakdown analizi
+- **T-#3-012:** `D:\AYKUTONPC-VPS-REHBERI.md` runbook'a "IP ban recovery" akışı (bu ADR ile başladı)
+- **T-#3-013:** VI veri retention policy (30 gün cron pruning + ARCHITECTURE doc)
+
+**Sonuçlar:**
+- (+) IP ban recovery pattern'i runbook'a kaydedildi (Section 5.10 madde "ASLA YAPMA pattern'i takım hafızası")
+- (+) Bot regex hardening adayları somut listede — Sprint #3'te tek-PR'la fix edilebilir
+- (+) Aykut'un endişesi tetikledi → veri kalitesi audit yapılmış oldu
+- (+) Web Console'un Caps Lock + paste sorunu Rescue mode + key auth ile bypass edilebileceği doğrulandı
+- (−) ~2 saat operasyonel kayıp (kullanıcı etkilenmedi, sadece SRE side)
+- (−) Recovery sırasında **3 root password chat'te leak oldu** → eğitsel: Section 5.10 risk listesine "Şifreyi chat'e yapıştırma" eklendi (kullanıcının kuralı), runbook'ta zaten mevcut
+
+**Etkilenen artefaktlar:**
+- `D:\AYKUTONPC-VPS-REHBERI.md` (T-#3-012 ile güncellenecek)
+- `.claudeteam/SPRINT_BOARD.md` (INC-001 + T-#3-011/012/013 eklendi)
+- `.claudeteam/DECISIONS.md` (bu ADR)
+
+---
+
+## ADR-009 — DevOps & SRE Sub-Team + RUNBOOKS Mekanizması
+
+- **Tarih:** 2026-05-08
+- **Durum:** Kabul edildi
+- **Karar verenler:** Kullanıcı (Aykut), PO, Tech Lead, SecOps, Senior Dev #2
+
+**Bağlam:**
+Kullanıcı `D:\AYKUTONPC-VPS-REHBERI.md` adlı kapsamlı bir VPS runbook'u olduğunu paylaştı: SSH/UFW recovery, container yönetimi, deploy, ASLA YAPMA listesi, multi-tenant strategy. Bu pattern ekibe resmi olarak entegre edilmek istendi: "bunu da DevOps engineer'lar için ekleyelim".
+
+Mevcut yapıda **Senior Dev #2 — Platform / Veri** zaten Linux/Docker/CI/CD/observability sahibi idi. Ama:
+- Production deploy disiplini, runbook authorship, incident response gibi DevOps'a özel disiplinler yazılı değildi
+- Emergency recovery (out-of-band fallback) pattern'i yok
+- DevOps anti-pattern'leri (UFW lockout, `down -v`, latest tag, vs.) explicit yasak değildi
+- Runbook'ların discoverability'si yoktu (D:\ root'unda dağılmış)
+
+**Değerlendirilen Seçenekler:**
+1. Sadece Senior Dev #2'nin scope'una "DevOps disiplini" ibaresi ekle — eksisi: tek role 4 disiplin (data + linux + docker + ci/cd + observability + runbook), sığlık riski
+2. Tek "DevOps Engineer" rolü ekle, SRE bits Dev #2'de kalsın — eksisi: SRE/incident response disiplini sahipsiz
+3. **2-rollü DevOps & SRE sub-team** + Dev #2'yi data-focus'a kaydır + RUNBOOKS.md mekanizması — net ayrım, sahiplenme, runbook discovery
+
+**Karar:**
+Seçenek 3.
+
+**Yapılan Değişiklikler:**
+
+**Section 1:**
+- Senior Dev #2 light refocus: "Backend Data / Platform" — PostgreSQL/EF Core/queries/migrations odaklı. Linux+dev Docker'ı korur, prod deployment + observability DevOps'a devredildi.
+- **🚀 DevOps & SRE sub-team** — 2 rol:
+  - **DevOps Engineer** — CI/CD, container orchestration, IaC, deploy/rollback, secrets at infra
+  - **SRE / Platform Engineer** — uptime, observability, alerting, incident response, **runbook authorship**, emergency recovery
+
+**Section 2 (table):** 6 yeni satır — production deploy, infrastructure değişikliği, CI/CD, container/compose, runbook authorship, prod DB migration
+
+**Section 3 (hierarchy):** 6 yeni satır — deploy timing, CI/CD design, prod infra, incident response, runbook authorship, observability stack
+
+**Section 5.10 [YENİ]** — DevOps & SRE Sorumluluk Alanı + Workflow:
+- Üretilen artefaktlar tablosu (Dockerfile, .github/workflows, scripts/deploy.sh, infrastructure/, monitoring/, RUNBOOKS.md)
+- Deploy disiplini (pre-deploy checklist + deploy + post-deploy + fail-rollback)
+- **Emergency Recovery Pattern'i** — her runbook'ta out-of-band fallback (Web Console / IPMI / KVM)
+- Standart Runbook bölümleri (7 zorunlu başlık)
+- ASLA YAPMA pattern'i — runbook hijyeni
+- Incident Response akışı (P0-P3 triage + blameless postmortem)
+- RUNBOOKS.md format örneği
+
+**Section 6:** 9 yeni anti-pattern — deploy-and-pray, ssh-and-fix, latest tag, secret in compose, UFW lockout, `down -v` panic, logs-to-stdout-only, sessiz monitoring, postmortem ihmali
+
+**Section 7 (risk signals):** Yeni "DevOps / Infrastructure Riskleri" kategorisi — 13 madde (UFW lockout, volume-silen komut, latest tag, hardcoded secret, healthcheck yok, rollback yok, backup yok, SPOF, mem_limit yok, 0.0.0.0 bind, manuel SSH müdahale, log centralization yok, out-of-band recovery yok)
+
+**Yeni Artefaktlar:**
+- `~/.claude/team-template/RUNBOOKS.md` — operational runbook index template
+- `D:\Projeler\Voxi\AykutOnPC\.claudeteam\RUNBOOKS.md` — AykutOnPC instance, `D:\AYKUTONPC-VPS-REHBERI.md`'yi referans alıyor
+
+**Slash Command Güncellemesi:**
+- `/enterpriseteam runbooks` argümanı eklendi (RUNBOOKS özet)
+- `/enterpriseteam` status raporu RUNBOOKS.md'yi de okuyor
+- `/enterpriseteam init` template kopyalama listesine `RUNBOOKS.md` eklendi
+
+**Sonuçlar:**
+- (+) DevOps disiplinleri yazılı ve ölçülebilir — sözel "infra'ya dikkat" yerine 13 risk sinyali, 9 anti-pattern, 7 zorunlu runbook bölümü
+- (+) Emergency recovery norm'laştı — her runbook'ta out-of-band fallback zorunlu
+- (+) Runbook'lar discoverable — `.claudeteam/RUNBOOKS.md` index'i her oturumda okunuyor
+- (+) `D:\AYKUTONPC-VPS-REHBERI.md` artık takıma "görünmez" değil; SRE bunu DevOps işi geldiğinde okur
+- (+) Senior Dev #2 ve DevOps team arasında net çizgi (data layer vs. infra layer)
+- (−) Takım büyüdü (19 rol, 8 disiplin) — trivial-skip kuralı **çok sıkı** uygulanmalı
+- (−) Senior Dev #2 description değişti — eski referanslar Section 2/3'te de hızlıca taranıp güncellenmeli (yapıldı)
+
+**Etkilenen dosyalar:**
+- `~/.claude_enterprise_team.md` — Section 1 (Dev #2 + DevOps team), Section 2/3 (yeni satırlar), Section 5.10 [yeni], Section 6 (9 anti-pattern), Section 7 (DevOps risk kategorisi)
+- `~/.claude/team-template/RUNBOOKS.md` — yeni
+- `~/.claude/commands/enterpriseteam.md` — RUNBOOKS desteği
+- `D:\Projeler\Voxi\AykutOnPC\.claudeteam\RUNBOOKS.md` — yeni (AykutOnPC instance)
+
+---
+
+## ADR-008 — Takım Bootstrap için `/enterpriseteam` Slash Command
+
+- **Tarih:** 2026-05-08
+- **Durum:** Kabul edildi
+- **Karar verenler:** Kullanıcı (Aykut), Context & Workflow Engineer, PO, Innovation Architect
+
+**Bağlam:**
+Takım promptu zaten global yüklenir (`~/.claude/CLAUDE.md` → `@~/.claude_enterprise_team.md`), ama yeni projeye girildiğinde:
+- `.claudeteam/` template'lerini manuel kurmak friction
+- Mevcut `.claudeteam/` varsa "nerede kaldık" raporunu manuel istemek tekrarlayan iş
+- Kullanıcı: "mesela /enterpriseteam yazıp çağırabilsem takımı"
+
+Bu, takım promptunun yokluğu değil — proje **context layer**'ının ayağa kaldırılması sorunu.
+
+**Değerlendirilen Seçenekler:**
+1. Shell function (orijinal `claude-team` öneri) — eksisi: PowerShell vs Bash ayrımı, terminal'e bağımlı, oturum içinden çağrılamaz
+2. Tek "init script" + Claude'a manuel "status ver" demek — eksisi: iki ayrı işlem, hatırlanması lazım
+3. **Native Claude Code slash command** — global `~/.claude/commands/enterpriseteam.md` — terminal-bağımsız, oturum içinden, smart routing (init vs status), argüman desteği
+
+**Karar:**
+Seçenek 3.
+
+**Yapılan Değişiklikler:**
+- **`~/.claude/team-template/`** (7 dosya) — single source of truth template'lar:
+  - `PROJECT_CONTEXT.md`, `ARCHITECTURE.md`, `SPRINT_BOARD.md`, `DECISIONS.md`, `TEAM_NOTES.md`, `TECH_RADAR.md`, `RESEARCH_BRIEFS/README.md`
+- **`~/.claude/commands/enterpriseteam.md`** — slash command:
+  - Argüman desteği: `init` / `status` / `sprint` / `decisions` / `tech` / (boş)
+  - Smart routing: `.claudeteam/` yoksa init önerisi, varsa status raporu
+  - Standart status raporu formatı (Proje + Sprint + WIP + Son Done + ADR + Sıradaki)
+  - Init akışında bugünün ISO tarihi otomatik doldurulur, ilk takım toplantısı (3 soru)
+- **Prompt Section 10.5** — komut kullanım dokümantasyonu
+
+**Sonuçlar:**
+- (+) Yeni projede 30 sn'de bootstrap (`/enterpriseteam init` → onay → 7 dosya kopya → 3 soru → çalışmaya hazır)
+- (+) Mevcut projede tek komutta orient olma (`/enterpriseteam` → status raporu)
+- (+) Cross-platform (PowerShell/Bash ayrımı yok — Claude Code native)
+- (+) Single source of truth: template güncellenirse `~/.claude/team-template/` tek yerde değişir
+- (−) Template dosyaları zamanla update edilmeli (örn. yeni `.claudeteam/` standart dosyası eklenirse hem template hem mevcut projeler güncellenir)
+
+**Etkilenen dosyalar:**
+- `~/.claude/team-template/*.md` (7 yeni dosya)
+- `~/.claude/commands/enterpriseteam.md` (yeni)
+- `~/.claude_enterprise_team.md` (Section 10.5 eklendi)
+
+---
+
 ## ADR-007 — SemanticKernel Critical Vuln Upgrade (1.54 → 1.75)
 
 - **Tarih:** 2026-05-07
