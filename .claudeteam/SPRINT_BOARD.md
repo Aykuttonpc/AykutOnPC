@@ -5,26 +5,15 @@
 
 ## Aktif Sprint
 
-- **Sprint:** #3 — Blog Modülü
-- **Başlangıç:** 2026-05-07
-- **Hedef bitiş:** 2026-05-21 (1.5-2 hafta)
-- **Sprint hedefi:** Markdown tabanlı blog: admin CRUD + public listing/detail + RSS + SEO. KnowledgeBase pattern'ini takip et — sapma yok.
+- **Sprint:** #5 — Henüz planlanmadı
+- **Önceki kapanış:** Sprint #4 (RAG + Visitor ID + Inbox) — 2026-05-09
+- **Sprint hedefi:** Belirlenecek (backlog'dan veya yeni hedef)
 
 ---
 
 ## 📋 Todo
 
-| ID | Başlık | Sahip | Tahmin | Notlar |
-|---|---|---|---|---|
-| T-#3-003 | `IBlogPostService` + `BlogPostService` (Infrastructure) | Senior Dev #1 | 1h | Caching: kısa TTL public listing için (10dk gibi KB pattern'i) |
-| T-#3-004 | Admin `BlogController` + Razor view (CRUD) | Senior Dev #1 + #3 | 3h | KnowledgeBase admin layout'u kopyala, markdown editor (textarea + preview) |
-| T-#3-005 | Public `BlogController` (listing `/blog`, detail `/blog/{slug}`) | Senior Dev #1 + #3 | 2h | Pagination yok (kişisel blog, az post). Tags filtreleme MVP dışı. |
-| T-#3-006 | Markdown rendering — Markdig + HtmlSanitizer | Senior Dev #3 + AppSec | 1.5h | XSS savunması — admin trust'lansa bile defansif sanitize. NuGet: `Markdig`, `HtmlSanitizer`. |
-| T-#3-007 | SEO: `<meta>` (title, description, OG, Twitter Card) + `sitemap.xml` entry | Senior Dev #3 | 1h | Sitemap blog post'lara `<url>` ekler |
-| T-#3-008 | RSS feed `/blog/feed.xml` | Senior Dev #1 | 1h | `application/rss+xml`, son 20 post |
-| T-#3-009 | ChatLogs/Profile/KB ile schema overlap kontrolü + index sanity check | Senior Dev #2 | 30dk | EXPLAIN ANALYZE listing query |
-| T-#3-010 | Manuel test path: yarat → publish → public list → detail → XSS attempt → RSS validate | QA + Aykut | 30dk | Production smoke + iframe/script tag XSS test |
-| T-D-009 | `Pgvector.EntityFrameworkCore` package'ı POC için Trial — Sprint #4'e bırakıldı | Innovation Architect | — | Brief yazıldı, implementation Sprint #4 |
+_Boş — Sprint #5 planlanmadı, backlog'dan iş çekilecek._
 
 ## 🚧 In Progress
 
@@ -38,7 +27,7 @@
 
 ## ✅ Done
 
-### Sprint #4 (devam ediyor)
+### Sprint #4 (kapatıldı 2026-05-09 — incident geçirdi, recovered, ADR-013)
 
 | ID | Başlık | Tamamlanan | Notlar |
 |---|---|---|---|
@@ -80,32 +69,14 @@
 
 ## Sıradaki Sprint'ler (planlama)
 
-- **Sprint #4 — RAG migration + visitor ID + Question Inbox** (2-3 hafta + ~6-7h ek iş)
-
-  **T-#4-001 — RAG migration** (ana iş, 2-3 hafta)
-  - `RESEARCH_BRIEFS/rag-migration.md` plan'ına göre Faz 1-6
-  - PGvector + EmbeddingService + KB integration + chat swap + eval + adoption
-  - Spike time-box: Faz 1-2 için 3 gün
-
-  **T-#4-002 — LocalStorage anonim visitor ID** (paralel, ~3h)
-  - **Problem:** Aynı kullanıcı farklı network/cihaz/IPv6 rotation ile 3 farklı IP → 3 unique sayılıyor (test edildi 2026-05-08, INC-001 sonrası).
-  - **Çözüm:** `PageView`'a `VisitorId GUID?` kolonu + EF migration. `VisitorTrackingMiddleware`'a `X-Visitor-Id` request header okuma + yoksa server response header set etme. `_Layout.cshtml`'a ~10 satır JS (localStorage'dan oku, yoksa `crypto.randomUUID()` ile gen, sonraki fetch/navigation request'lerinde header ile yolla). Dashboard unique query: `COUNT(DISTINCT COALESCE("VisitorId"::text, "HashedIp"))`.
-  - **KVKK:** anonim UUID, geri çevrilemez, kullanıcı clear-storage ile silebilir, GA-pattern. Cookie değil → cookie banner gerekmez.
-  - **Trade-off:** Browser private mode'da reset olur (kabul edilebilir, çoğu analytics aynı), JS gerek (mevcut sistem JS-free idi — bu mimari değişiklik, ADR-011 yazılacak).
-
-  **T-#4-003 — Visitor Question Inbox** (RAG sonrası, ~3-4h, **Pasif / KB-besleme**)
-  - **Amaç:** ChatLog'dan kullanıcı sorularını admin Inbox'ta göster. Aykut cevaplar → KB'ye eklenir → bir sonraki RAG sorusunda otomatik yayılır (closed feedback loop).
-  - **Çözüm:** `ChatLog` entity'sine 3 alan ekle (`IsReviewed bool`, `AdminNote string?`, `LinkedKnowledgeEntryId int?`) + EF migration. Yeni `/Admin/Inbox` sayfası — liste (yeni→eski, "review edilmemiş" badge, tarih/cevaplanmamış filtre) + detay (soru + bot cevabı + "KB'ye Ekle" butonu prefilled `/admin/knowledgebase/create` form'a yönlendirir). KB kaydı sonrası `LinkedKnowledgeEntryId` set + `IsReviewed=true`. Admin nav'da opsiyonel "Inbox (N)" badge.
-  - **RAG sinerjisi:** RAG kurulduktan sonra similarity score < 0.6 ise "muhtemelen yetersiz cevap" flag'i Inbox'ta öne çıkar. Eval set bu inbox'tan beslenir (gerçek soru + Aykut onaylı cevap = altın etiket).
-  - **Sıra:** RAG Faz 6 (adoption) bittikten sonra. Bağımsız da yapılabilir, ama RAG sonrası "yetersiz cevap" detection daha doğru.
-  - **Kapsam dışı (MVP değil):** Aktif iki-yönlü iletişim (e-posta ile soran kişiye cevap gönderme). Anonim ziyaretçiye geri dönüş yok — cevap KB'ye girer, gelecek kullanıcılar yararlanır.
+- **Sprint #5** — henüz hedef belirlenmedi. Backlog'dan veya yeni iş.
 
 - **Backlog (sırası belirsiz):**
-  - Test projesi kurulumu (xUnit/NUnit, integration test, Testcontainers ile Postgres)
-  - CSP header eklenmesi (`Program.cs` security middleware)
-  - Structured logging (Serilog → file + Seq/Loki opsiyonel — Tech Radar Assess'te)
-  - .NET 9 → .NET 10 LTS upgrade (Kasım 2026 sonrası — ayrı sprint)
-  - Redis healthcheck'i ya kullan (distributed cache) ya kaldır (`ARCHITECTURE.md` tech debt)
+  - **CSP header** eklenmesi (`Program.cs` security middleware) — AppSec eski isteği, basit
+  - **Structured logging** (Serilog → file + Seq/Loki opsiyonel — Tech Radar Assess'te)
+  - **Redis healthcheck'i** ya kullan (distributed cache) ya kaldır (`ARCHITECTURE.md` tech debt)
+  - **.NET 9 → .NET 10 LTS upgrade** (Kasım 2026 sonrası — ayrı sprint)
+  - **LLM-as-judge eval upgrade** — şu an `rag-eval.json` keyword check, ileride judge model ile semantic compare
 
 ---
 

@@ -24,7 +24,7 @@ Aykut'un dijital kimlik kartı: kişisel portfolyo + GitHub feed'li build vitrin
 ## Başarı Kriterleri
 
 - [ ] **Uptime ≥ %99** (Hetzner + healthcheck + CI rollback)
-- [ ] **AI chat anlamlı yanıt verme oranı ≥ %80** (eval set yok henüz — Sprint #4 RAG ile gelecek)
+- [ ] **AI chat anlamlı yanıt verme oranı ≥ %80** (`.claudeteam/EVAL_SET/rag-eval.json` 15 Q&A keyword baseline — Sprint #4 ile geldi; LLM-as-judge upgrade backlog'da)
 - [ ] **Admin tüm içeriği UI'dan yönetebiliyor** (Profile/Education/Experience/Spec/KB/ChatLogs ✅, Blog Sprint #3'te)
 - [ ] **Visitor analytics botları + admin'i hariç tutuyor** (✅ commit `b99519c`)
 - [ ] **CV linki olarak verilebilir kalitede** (sahip subjektif kararı)

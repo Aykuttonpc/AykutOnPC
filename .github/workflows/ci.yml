@@ -1,7 +1,10 @@
 # ============================================================
 # AykutOnPC — CI Pipeline
 # Triggers: push to main / PRs targeting main
-# Jobs: build → test → (on main only) SSH deploy to Hetzner
+# Jobs: build → docker-validate → (on main only) SSH deploy to Hetzner
+#
+# Note: No test step — owner explicit decision (2026-05-09). Quality gate
+# is build success + Docker image validation + production smoke after deploy.
 # ============================================================
 name: CI / CD
 
@@ -18,9 +21,9 @@ env:
 
 jobs:
 
-  # ── Build & Test ───────────────────────────────────────────
+  # ── Build ──────────────────────────────────────────────────
   build:
-    name: Build & Test
+    name: Build
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -36,10 +39,6 @@ jobs:
 
       - name: Build (Release)
         run: dotnet build AykutOnPC.sln -c Release --no-restore
-
-      - name: Run tests
-        run: dotnet test AykutOnPC.sln -c Release --no-build --verbosity normal
-        # Will be a no-op until test projects are added — won't fail
 
   # ── Docker Build Validation ────────────────────────────────
   docker-validate:

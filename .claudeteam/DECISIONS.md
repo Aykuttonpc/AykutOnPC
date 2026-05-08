@@ -34,6 +34,76 @@
 
 ---
 
+## ADR-013 — Sprint #4 Deploy Incident: Postmortem (deploy.sh `--no-deps` + Embedding Model Rebrand)
+
+- **Tarih:** 2026-05-09
+- **Durum:** Resolved
+- **Karar verenler:** SRE, DevOps, Senior Dev #1, ML/RAG Engineer, PO (Aykut)
+- **Severity:** P1 — chat path broken ~1.5 saat, ana sayfa intermittent CSS loss
+
+**Bağlam — Timeline:**
+
+| Saat (yerel) | Olay |
+|---|---|
+| 23:08 | `ecfbcda feat(sprint-4)` push (RAG + Visitor ID + Inbox) |
+| 23:30 | Chat "Bağlantı zayıf" + ana sayfa CSS 404 retry'da. Health 200 ama uygulama bozuk. |
+| 23:39 | `d4bde58 Revert "feat(sprint-4)..."` push (emergency rollback). Site stabilize. |
+| 23:50 | `0e4e7ff fix(db): keep pgvector image` push (defansif compose patch). |
+| 00:30 | SSH ile DB inspect → migration history sadece 4 satır → Sprint #4 migrations hiç uygulanmamış. |
+| 00:45 | `deploy.sh` okundu → root cause #1: `Step 5: up -d --no-deps web` → DB image directive değişikliği silent skip. |
+| 01:00 | Manuel SSH ile DB pgvector image swap + `CREATE EXTENSION vector`. |
+| 01:10 | `30b3809 fix(deploy)` + `9277d3d Reapply Sprint #4` push. Migrations otomatik apply oldu, schema güncel. |
+| 01:25 | İlk backfill: 0/10 succeeded — `text-embedding-004` 404 NOT_FOUND. Root cause #2 keşfedildi. |
+| 01:30 | `7cb6356 fix(rag): switch to gemini-embedding-001 + outputDimensionality` push. |
+| 01:35 | Backfill 10/10 ✅, chat smoke ✅, ana sayfa 5/5 200 ✅. **Tam recovery**. |
+
+**Root Cause Analizi (5 Whys × 2):**
+
+**Birincil (deploy.sh):**
+1. Why chat /Home/Error redirect? → `KnowledgeEntries.Embedding` kolon sorgu hatası
+2. Why? → Migration `AddKnowledgeEmbedding` uygulanmamış
+3. Why? → `CREATE EXTENSION vector` fail (binary yok)
+4. Why? → DB hala stock `postgres:16-alpine` çalışıyordu
+5. Why? → `deploy.sh` Step 5 `docker compose up -d --no-deps web` → DB+Redis container'ı atlıyor → compose `db.image: pgvector/pgvector:pg16` yazılı olsa da etkisiz
+
+**İkincil (embedding model):**
+1. Why backfill 10/10 fail? → `GeminiEmbeddingService.GenerateAsync` null döndürüyor
+2. Why? → Gemini API 404 NOT_FOUND
+3. Why? → `models/text-embedding-004` v1beta'dan kaldırılmış
+4. Why? → Brief (`rag-migration.md`, 2026-05-07) yazılırken embedding model adı doğrulanmıştı ama 2026-05-09'a kadar Google rebrand etmiş; lokal dev test "chat fail expected" memory'i nedeniyle yapılmamış
+5. Why? → Brief template'inde "External API endpoint live curl test" zorunlu adımı yok
+
+**Düzeltici Aksiyonlar:**
+
+- ✅ **`deploy.sh` fix** (commit `30b3809`): `--no-deps web` kaldırıldı, önce `docker compose pull` (tüm service'ler), sonra `docker compose up -d`. Compose state ile reconcile, image değişikliği olan container otomatik recreate.
+- ✅ **EmbeddingSettings.ModelId default** `text-embedding-004` → `gemini-embedding-001` (commit `7cb6356`)
+- ✅ **`outputDimensionality: 768`** request body'sine eklendi — `gemini-embedding-001` default 3072 dim, schema'mız `vector(768)` (commit `7cb6356`)
+- ✅ **ARCHITECTURE.md** deploy flow + tech debt güncellendi
+- ✅ **RAG brief**'e embedding model rebrand notu eklendi
+- ☐ **Brief template** (`~/.claude/team-template/RESEARCH_BRIEFS/`)'e "External API endpoint live test" zorunlu maddesi eklenecek (Knowledge Curator action item)
+- ☐ **Tech Radar** "External AI API'lerin model isim değişikliklerini quartal review" notu (Tech Radar Engineer action item)
+
+**Lessons Learned:**
+
+1. **Multi-service compose changes deploy script support gerektirir** — `--no-deps` flag'i web-only restart için verimli ama DB/Redis image directive değişikliklerini silent skip ediyor. Modern uygulama: hep `pull + up -d` (compose kendi reconcile eder).
+2. **External API model isimleri kırılgan** — özellikle preview/early-access modeller. Brief yazımında "test now → adopt" arası 1-2 hafta bile geçse rebrand olabilir.
+3. **`/health` endpoint partial state'i yakalayamıyor** — DB+Redis connection check yeterli değil, application-layer query check de eklenmeli (ileride observability sprint'inde).
+4. **Revert disipline güçlü emergency aracı** — git history korundu, ecfbcda hala accessible, redeploy temiz oldu. **`git revert` > `git reset --hard`** prod incident'larında.
+5. **Migration runtime fail farklı semaphore lazım** — Program.cs background migrate retry 5 fail oldu ama health endpoint hala 200. Sessiz fail = teşhis zoru. Migration son durumu `/health/ready` gibi ayrı endpoint'te göstermeli (observability tema).
+6. **`set -euo pipefail` yetmez, semantic test gerek** — deploy.sh shell-safe ama "deploy gerçekten oldu mu" testi sadece /health'e bakıyor. Migration apply, schema match gibi semantic check'ler yok.
+
+**Sonuçlar / Trade-off'lar:**
+
+- ✅ **Recovery hızlı** (~2.5 saat) — revert disiplinden + tek-mesh tanı + atomik fix push
+- ⚠️ **Prod down ~1.5 saat** chat path için (health endpoint yanıltıcı 200 döndü)
+- ✅ **Net etki minimal** — kişisel portfolio, low traffic, ziyaretçi kayıp yok
+- ✅ **Sprint #4 işi korundu** — git'te hiçbir kod kayboldu olmadı, revert + reapply pattern'iyle clean redeploy
+- ✅ **deploy.sh fix kalıcı kazanç** — gelecekteki tüm DB/Redis image değişiklikleri otomatik handle
+- ✅ **Embedding rebrand tespiti** — başka projeler de aynı tuzağa düşebilirdi, lessons learned dokümante
+- 📋 **Postmortem ADR-013 yayında** — ekipte bu pattern'i bilen olur, runbook'a referans
+
+---
+
 ## ADR-012 — RAG Migration: PGvector + Gemini text-embedding-004
 
 - **Tarih:** 2026-05-09

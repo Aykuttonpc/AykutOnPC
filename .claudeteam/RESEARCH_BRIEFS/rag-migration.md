@@ -1,8 +1,11 @@
 # Brief: KB Stuffing → Gerçek RAG (PGvector + Embedding)
 
-**Kategori önerisi:** Trial → Adopt (Sprint #4 implementasyonu sonrası)
-**Tarih:** 2026-05-07
-**Hazırlayan:** Knowledge Curator (AykutOnPC takımı)
+**Kategori:** ✅ **Adopt** — Sprint #4 ile production'a girdi (commit `9277d3d`, 2026-05-09)
+**Tarih:** 2026-05-07 (brief), 2026-05-09 (adopted)
+**Hazırlayan:** Knowledge Curator
+**Adoption ADR:** ADR-012, incident postmortem ADR-013
+
+> **⚠️ Embedding model güncellemesi (2026-05-09):** Brief boyunca `text-embedding-004` referans alınmıştı. Google bu modeli generativelanguage v1beta'dan retire etti — production'da `gemini-embedding-001` + `outputDimensionality: 768` parametresi kullanılıyor. Boyut (768) ve schema değişmedi, sadece model adı + body field. Detay: ADR-013.
 
 ---
 

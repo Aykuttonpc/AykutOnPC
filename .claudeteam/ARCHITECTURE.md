@@ -64,12 +64,14 @@ Tüm istekler `VisitorTrackingMiddleware`'den geçer → IP SHA-256 hash + günl
 `POST /Account/Login` (rate-limit: 5/min/IP) → BCrypt verify → JWT token üret → `AykutOnPC.AuthToken` cookie'ye yaz (HttpOnly+Secure). `[Authorize]` endpoint'lerde `OnMessageReceived` cookie'den okur.
 
 ### 4. Production deploy
-`git push origin main` → GitHub Actions `ci.yml` → `dotnet test` + `docker build` → SSH'la Hetzner'a → `scripts/deploy.sh`:
+`git push origin master` → GitHub Actions `ci.yml` → `dotnet build` + `docker build` → SSH'la Hetzner'a → `scripts/deploy.sh`:
 1. Pre-deploy DB backup
-2. `docker compose pull && build`
-3. Rolling restart
+2. `docker compose pull` (db + redis + web — image değişikliği detect edilir)
+3. `docker compose up -d` (rolling restart, sadece değişen container)
 4. `/health` poll (60s timeout)
 5. **Fail → otomatik rollback** to previous image tag
+
+> **Kritik tarih (ADR-013):** 2026-05-09 öncesi Step 5 `up -d --no-deps web` idi → DB image değişiklikleri silent skip ediliyordu. Sprint #4 deploy bu yüzden çöktü; fix commit `30b3809`.
 
 ## Önemli Mimari Kararlar (Kısa Liste)
 
@@ -106,11 +108,10 @@ Tüm istekler `VisitorTrackingMiddleware`'den geçer → IP SHA-256 hash + günl
 
 | Item | Sebep | Sprint hedefi |
 |---|---|---|
-| **Test dosyası yok** (CI'da `dotnet test` çalışıyor ama proje yok) | İlk versiyonda hız öncelikti | Sprint #2 sonrası değerlendirilecek |
-| **"RAG" değil, retrieval lite** — KB'nin tamamı (50 entry) her sorguda system prompt'a yığılıyor | İlk MVP'de yeter sayıldı, KB küçük | **Sprint #4 — RAG migration** (brief Sprint #2'de yazılacak) |
 | **Memory cache in-process** — multi-node deploy'da inkonsistent olur | Single-instance Hetzner CX22 yeter | Multi-node ihtiyacı doğunca Redis swap |
-| **Eval set yok** | LLM regression testi henüz kurulmadı | Sprint #4 RAG ile birlikte |
-| **CSP header yok** | `Program.cs` security header'ları yazıyor ama `Content-Security-Policy` eksik | Sprint #2 / Tema A polish'e ekle |
+| **Eval set keyword-check baseline** (`.claudeteam/EVAL_SET/rag-eval.json`, 15 Q&A) | LLM-as-judge upgrade ileride | RAG kullanım büyüyünce |
+| **CSP header yok** | `Program.cs` security header'ları yazıyor ama `Content-Security-Policy` eksik | Sprint #5 candidate |
 | **`ChatLog.BotResponse` MaxLength 8000** | Çok uzun cevaplar truncate olur | Düşük öncelik, KB cevapları kısa |
 | **Redis healthcheck var ama Redis kullanılmıyor** | Production'da Redis container kalktı, ama DI yok | Ya kaldır ya gerçek kullan (cache layer) |
 | **Background migrate'in retry limit'i 5** | Yeterli ama log dışında alarm yok | Observability tema |
+| **Otomatik test yok — WONT_FIX** | Owner kararı (2026-05-09): bu proje için test altyapısı kurulmayacak | Ele alınmayacak |
