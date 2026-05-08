@@ -72,10 +72,18 @@
 
 ## Sıradaki Sprint'ler (planlama)
 
-- **Sprint #4 — RAG migration** (2-3 hafta)
-  - `RESEARCH_BRIEFS/rag-migration.md` plan'ına göre
-  - Faz 1-6 → PGvector + EmbeddingService + KB integration + chat swap + eval + adoption
+- **Sprint #4 — RAG migration + LocalStorage visitor ID** (2-3 hafta + ~3h paralel iş)
+
+  **T-#4-001 — RAG migration** (ana iş, 2-3 hafta)
+  - `RESEARCH_BRIEFS/rag-migration.md` plan'ına göre Faz 1-6
+  - PGvector + EmbeddingService + KB integration + chat swap + eval + adoption
   - Spike time-box: Faz 1-2 için 3 gün
+
+  **T-#4-002 — LocalStorage anonim visitor ID** (paralel, ~3h)
+  - **Problem:** Aynı kullanıcı farklı network/cihaz/IPv6 rotation ile 3 farklı IP → 3 unique sayılıyor (test edildi 2026-05-08, INC-001 sonrası).
+  - **Çözüm:** `PageView`'a `VisitorId GUID?` kolonu + EF migration. `VisitorTrackingMiddleware`'a `X-Visitor-Id` request header okuma + yoksa server response header set etme. `_Layout.cshtml`'a ~10 satır JS (localStorage'dan oku, yoksa `crypto.randomUUID()` ile gen, sonraki fetch/navigation request'lerinde header ile yolla). Dashboard unique query: `COUNT(DISTINCT COALESCE("VisitorId"::text, "HashedIp"))`.
+  - **KVKK:** anonim UUID, geri çevrilemez, kullanıcı clear-storage ile silebilir, GA-pattern. Cookie değil → cookie banner gerekmez.
+  - **Trade-off:** Browser private mode'da reset olur (kabul edilebilir, çoğu analytics aynı), JS gerek (mevcut sistem JS-free idi — bu mimari değişiklik, ADR-011 yazılacak).
 
 - **Backlog (sırası belirsiz):**
   - Test projesi kurulumu (xUnit/NUnit, integration test, Testcontainers ile Postgres)
