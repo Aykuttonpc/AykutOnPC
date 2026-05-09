@@ -148,6 +148,8 @@ services:
       - ./nginx/conf.d:/etc/nginx/conf.d:ro
       - /etc/letsencrypt:/etc/letsencrypt:ro
       - /var/www/certbot:/var/www/certbot:ro
+      # Mimir APK serve (T-043): /opt/mimir/apks → /var/www/mimir-apks
+      - /opt/mimir/apks:/var/www/mimir-apks:ro
     depends_on:
       web:
         condition: service_healthy
