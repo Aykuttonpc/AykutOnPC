@@ -182,6 +182,10 @@ public static class ServiceExtensions
         // Chat telemetry / admin log
         services.AddScoped<IChatLogService, ChatLogService>();
 
+        // My Workspace (boards / widgets / metrics)
+        services.AddScoped<IBoardService, BoardService>();
+        services.AddScoped<IWidgetService, WidgetService>();
+
         return services;
     }
 

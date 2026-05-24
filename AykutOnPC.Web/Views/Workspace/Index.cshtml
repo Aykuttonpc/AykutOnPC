@@ -1,0 +1,924 @@
+@{
+    ViewData["Title"] = "My Workspace";
+    Layout = "_AdminLayout";
+    var initialBoardId = (int)ViewBag.InitialBoardId;
+}
+
+<!-- Gridstack 10.x — drag/resize widget grid -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/gridstack@10.3.1/dist/gridstack.min.css">
+<script src="https://cdn.jsdelivr.net/npm/gridstack@10.3.1/dist/gridstack-all.js"></script>
+<!-- Chart.js — reused by F2 chart widgets and F3 burndown -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+
+<style>
+    .ws-toolbar {
+        display: flex; align-items: center; gap: 1rem;
+        margin-bottom: 1.5rem; flex-wrap: wrap;
+    }
+    .ws-toolbar h1 {
+        margin: 0; font-size: 1.6rem;
+        background: linear-gradient(135deg, #c4b5fd, #06b6d4);
+        -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+        background-clip: text;
+    }
+    .ws-toolbar .grow { flex: 1; }
+    .ws-board-meta { color: var(--text-muted); font-size: 0.85rem; }
+    .ws-btn {
+        padding: 0.5rem 1rem; border-radius: 8px; border: 1px solid rgba(255,255,255,0.12);
+        background: rgba(255,255,255,0.04); color: var(--text-main); cursor: pointer;
+        font-size: 0.85rem; transition: 0.15s; display: inline-flex; gap: 0.4rem; align-items: center;
+    }
+    .ws-btn:hover { background: rgba(255,255,255,0.08); border-color: rgba(109,40,217,0.5); }
+    .ws-btn.primary { background: rgba(109,40,217,0.18); border-color: rgba(109,40,217,0.5); color: #c4b5fd; }
+    .ws-btn.primary:hover { background: rgba(109,40,217,0.28); }
+    .ws-btn.danger { color: #ef4444; border-color: rgba(239,68,68,0.25); }
+    .ws-select {
+        padding: 0.5rem 0.75rem; border-radius: 8px; border: 1px solid rgba(255,255,255,0.12);
+        background: rgba(10,10,15,0.7); color: var(--text-main); font-family: inherit; font-size: 0.9rem;
+    }
+    .ws-empty {
+        padding: 3rem; text-align: center; color: var(--text-muted);
+        border: 1px dashed rgba(255,255,255,0.1); border-radius: 14px;
+    }
+
+    /* Gridstack item card styling */
+    .grid-stack { background: transparent; }
+    .grid-stack-item-content {
+        background: rgba(15,15,22,0.85);
+        border: 1px solid rgba(255,255,255,0.07);
+        border-radius: 14px;
+        padding: 1rem 1.1rem;
+        overflow: auto;
+        color: var(--text-main);
+    }
+    .widget-header {
+        display: flex; align-items: center; justify-content: space-between;
+        padding-bottom: 0.6rem; margin-bottom: 0.75rem;
+        border-bottom: 1px solid rgba(255,255,255,0.06);
+        cursor: move; /* drag handle */
+    }
+    .widget-header h4 { margin: 0; font-size: 0.95rem; font-weight: 600; }
+    .widget-actions { display: flex; gap: 0.4rem; opacity: 0.5; transition: 0.15s; }
+    .grid-stack-item-content:hover .widget-actions { opacity: 1; }
+    .widget-actions button {
+        background: none; border: none; color: var(--text-muted); cursor: pointer; padding: 0.2rem;
+        border-radius: 4px;
+    }
+    .widget-actions button:hover { color: white; background: rgba(255,255,255,0.06); }
+
+    /* Per-type internals — kept tight, more in JS render templates */
+    .checklist-input { display: flex; gap: 0.5rem; margin-bottom: 0.75rem; }
+    .checklist-input input {
+        flex: 1; padding: 0.4rem 0.6rem; border-radius: 6px;
+        background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1);
+        color: white; font-family: inherit; font-size: 0.85rem;
+    }
+    .checklist-input button {
+        padding: 0.4rem 0.7rem; border-radius: 6px; border: none;
+        background: rgba(109,40,217,0.3); color: #c4b5fd; cursor: pointer; font-size: 0.85rem;
+    }
+    .checklist-list { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 0.3rem; }
+    .checklist-list li {
+        display: flex; align-items: center; gap: 0.5rem; padding: 0.3rem 0.4rem; border-radius: 6px;
+    }
+    .checklist-list li:hover { background: rgba(255,255,255,0.03); }
+    .checklist-list input[type=checkbox] { accent-color: #6d28d9; }
+    .checklist-list .done { text-decoration: line-through; color: var(--text-muted); }
+    .checklist-list .del { background: none; border: none; color: var(--text-muted); cursor: pointer; opacity: 0; }
+    .checklist-list li:hover .del { opacity: 1; }
+    .checklist-progress {
+        font-size: 0.75rem; color: var(--text-muted); margin-top: 0.5rem;
+    }
+
+    .counter-value {
+        font-size: 2.8rem; font-weight: 800; line-height: 1;
+        background: linear-gradient(135deg, #6d28d9, #06b6d4);
+        -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+        background-clip: text;
+    }
+    .counter-controls { display: flex; gap: 0.3rem; margin-top: 0.5rem; }
+    .counter-controls button {
+        padding: 0.25rem 0.6rem; border-radius: 6px; border: 1px solid rgba(255,255,255,0.1);
+        background: rgba(255,255,255,0.04); color: var(--text-main); cursor: pointer; font-size: 0.85rem;
+    }
+    .counter-label { color: var(--text-muted); font-size: 0.85rem; }
+
+    .countdown-target { font-size: 0.8rem; color: var(--text-muted); }
+    .countdown-days { font-size: 2.6rem; font-weight: 800; color: #06b6d4; line-height: 1; }
+    .countdown-expired { color: #ef4444; }
+
+    .progress-track {
+        background: rgba(255,255,255,0.06); border-radius: 999px; height: 10px; overflow: hidden;
+        margin: 0.75rem 0 0.4rem;
+    }
+    .progress-fill {
+        height: 100%; background: linear-gradient(90deg, #6d28d9, #06b6d4); border-radius: 999px;
+        transition: width 0.4s;
+    }
+    .progress-meta { display: flex; justify-content: space-between; color: var(--text-muted); font-size: 0.8rem; }
+
+    .note-content {
+        white-space: pre-wrap; word-break: break-word; line-height: 1.55;
+        color: var(--text-main); font-size: 0.9rem;
+    }
+    .note-edit textarea {
+        width: 100%; min-height: 100px; background: rgba(255,255,255,0.03);
+        border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; color: white;
+        padding: 0.5rem; font-family: inherit; font-size: 0.85rem; resize: vertical;
+    }
+
+    .link-list { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 0.3rem; }
+    .link-list a { color: #06b6d4; text-decoration: none; font-size: 0.88rem; }
+    .link-list a:hover { text-decoration: underline; }
+    .link-list .del { background: none; border: none; color: var(--text-muted); cursor: pointer; opacity: 0; margin-left: auto; }
+    .link-list li:hover .del { opacity: 1; }
+    .link-list li { display: flex; align-items: center; gap: 0.5rem; padding: 0.25rem 0.3rem; border-radius: 6px; }
+    .link-list li:hover { background: rgba(255,255,255,0.03); }
+
+    /* Modal */
+    .ws-modal-backdrop {
+        position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 999;
+        display: none; align-items: center; justify-content: center;
+    }
+    .ws-modal-backdrop.open { display: flex; }
+    .ws-modal {
+        background: #0f0f17; border: 1px solid rgba(255,255,255,0.1); border-radius: 14px;
+        padding: 1.5rem; min-width: 380px; max-width: 90vw; max-height: 85vh; overflow: auto;
+    }
+    .ws-modal h2 { margin: 0 0 1rem 0; font-size: 1.1rem; }
+    .ws-modal label { display: block; color: var(--text-muted); font-size: 0.8rem; margin: 0.75rem 0 0.3rem; }
+    .ws-modal input, .ws-modal select, .ws-modal textarea {
+        width: 100%; padding: 0.55rem 0.7rem; background: rgba(255,255,255,0.04);
+        border: 1px solid rgba(255,255,255,0.1); border-radius: 6px; color: white;
+        font-family: inherit; font-size: 0.9rem;
+    }
+    .ws-modal .modal-actions { display: flex; gap: 0.6rem; justify-content: flex-end; margin-top: 1.25rem; }
+
+    .widget-type-grid {
+        display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.5rem;
+    }
+    .widget-type-card {
+        padding: 0.85rem 0.5rem; border-radius: 8px; border: 1px solid rgba(255,255,255,0.1);
+        background: rgba(255,255,255,0.03); cursor: pointer; text-align: center; transition: 0.15s;
+    }
+    .widget-type-card:hover { border-color: rgba(109,40,217,0.5); background: rgba(109,40,217,0.1); }
+    .widget-type-card.selected { border-color: #6d28d9; background: rgba(109,40,217,0.15); }
+    .widget-type-card i { font-size: 1.25rem; color: #c4b5fd; }
+    .widget-type-card div { font-size: 0.75rem; margin-top: 0.3rem; color: var(--text-muted); }
+
+    /* Sprint-specific banner */
+    .sprint-banner {
+        background: linear-gradient(135deg, rgba(109,40,217,0.15), rgba(6,182,212,0.1));
+        border: 1px solid rgba(109,40,217,0.3); border-radius: 12px; padding: 1rem 1.25rem;
+        margin-bottom: 1rem; display: flex; gap: 1.5rem; align-items: center; flex-wrap: wrap;
+    }
+    .sprint-banner .goal { flex: 1; min-width: 200px; font-size: 0.9rem; }
+    .sprint-banner .dates { color: var(--text-muted); font-size: 0.82rem; font-family: monospace; }
+    .sprint-banner .stat { text-align: center; }
+    .sprint-banner .stat .n { font-size: 1.5rem; font-weight: 700; color: #06b6d4; line-height: 1; }
+    .sprint-banner .stat .l { font-size: 0.7rem; color: var(--text-muted); }
+</style>
+
+<div class="ws-toolbar">
+    <h1><i class="fa-solid fa-table-columns" style="color:#c4b5fd; margin-right:0.5rem;"></i>My Workspace</h1>
+    <select id="boardSwitcher" class="ws-select" title="Switch board"></select>
+    <button id="editBoardBtn" class="ws-btn" title="Edit board"><i class="fa-solid fa-pen"></i></button>
+    <button id="addBoardBtn" class="ws-btn"><i class="fa-solid fa-folder-plus"></i> Board</button>
+    <button id="addWidgetBtn" class="ws-btn primary"><i class="fa-solid fa-plus"></i> Widget</button>
+    <div class="grow"></div>
+    <span id="lastSaved" class="ws-board-meta"></span>
+</div>
+
+<!-- Sprint banner — populated when board.kind == "Sprint" -->
+<div id="sprintBanner" class="sprint-banner" style="display:none;"></div>
+
+<div class="grid-stack"></div>
+<div id="emptyState" class="ws-empty" style="display:none;">
+    Bu board boş — sağ üstten <strong>Widget</strong> ekle.
+</div>
+
+<!-- ── Modals ───────────────────────────────────────────────── -->
+<div id="addWidgetModal" class="ws-modal-backdrop">
+    <div class="ws-modal">
+        <h2><i class="fa-solid fa-puzzle-piece"></i> Yeni Widget</h2>
+        <label>Tip</label>
+        <div id="widgetTypeGrid" class="widget-type-grid"></div>
+        <label>Başlık (opsiyonel)</label>
+        <input type="text" id="newWidgetTitle" placeholder="örn. Bu hafta">
+        <div class="modal-actions">
+            <button class="ws-btn" data-action="cancel">Vazgeç</button>
+            <button class="ws-btn primary" id="confirmAddWidget">Ekle</button>
+        </div>
+    </div>
+</div>
+
+<div id="addBoardModal" class="ws-modal-backdrop">
+    <div class="ws-modal">
+        <h2><i class="fa-solid fa-folder-plus"></i> Yeni Board</h2>
+        <label>Ad</label>
+        <input type="text" id="newBoardName" placeholder="örn. İş / Spor / Sprint #6">
+        <label>Tip</label>
+        <select id="newBoardKind">
+            <option value="Standard">Standard — uzun ömürlü alan</option>
+            <option value="Sprint">Sprint — zaman-kutulu, burndown'lı</option>
+        </select>
+        <div id="sprintFields" style="display:none;">
+            <label>Başlangıç</label>
+            <input type="datetime-local" id="newBoardStart">
+            <label>Bitiş</label>
+            <input type="datetime-local" id="newBoardEnd">
+            <label>Sprint hedefi</label>
+            <textarea id="newBoardGoal" rows="2" placeholder="Bu sprintte ne çıkacak..."></textarea>
+        </div>
+        <div class="modal-actions">
+            <button class="ws-btn" data-action="cancel">Vazgeç</button>
+            <button class="ws-btn primary" id="confirmAddBoard">Oluştur</button>
+        </div>
+    </div>
+</div>
+
+<div id="editBoardModal" class="ws-modal-backdrop">
+    <div class="ws-modal">
+        <h2><i class="fa-solid fa-pen"></i> Board Düzenle</h2>
+        <label>Ad</label>
+        <input type="text" id="editBoardName">
+        <div id="editSprintFields" style="display:none;">
+            <label>Başlangıç</label>
+            <input type="datetime-local" id="editBoardStart">
+            <label>Bitiş</label>
+            <input type="datetime-local" id="editBoardEnd">
+            <label>Sprint hedefi</label>
+            <textarea id="editBoardGoal" rows="2"></textarea>
+            <label>Retro notları</label>
+            <textarea id="editBoardRetro" rows="4" placeholder="Sprint sonu öğrenilenler..."></textarea>
+        </div>
+        <div class="modal-actions">
+            <button class="ws-btn danger" id="archiveBoardBtn"><i class="fa-solid fa-box-archive"></i> Arşivle</button>
+            <div class="grow" style="flex:1"></div>
+            <button class="ws-btn" data-action="cancel">Vazgeç</button>
+            <button class="ws-btn primary" id="confirmEditBoard">Kaydet</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    // Initial board id passed from the controller — drives the first fetch. Subsequent board
+    // switches mutate this and call refresh().
+    let currentBoardId = @initialBoardId;
+    let currentBoard = null;
+    let grid = null;
+    const charts = new Map(); // widgetId → Chart.js instance (destroyed on widget removal/rerender)
+
+    // ── Type registry ──────────────────────────────────────────────────
+    // Each widget type knows three things:
+    //   meta: how it shows up in the "Add Widget" picker + a sensible default grid size
+    //   defaultConfig(): factory for the initial ConfigJson
+    //   render(widget, contentEl): paints the body of a widget into a Gridstack item
+    //
+    // Adding a new widget type = adding one entry to this object + (optionally) a Razor partial.
+    // F2 chart types and F3 burndown register here too.
+    const WIDGET_TYPES = {
+        Checklist: { meta: { label: 'Checklist',  icon: 'fa-list-check',         w: 4, h: 4 }, defaultConfig: () => null, render: renderChecklist },
+        Counter:   { meta: { label: 'Sayaç',      icon: 'fa-hashtag',            w: 3, h: 3 }, defaultConfig: () => JSON.stringify({ value: 0, label: 'Etiket' }), render: renderCounter },
+        Countdown: { meta: { label: 'Geri Sayım', icon: 'fa-hourglass-half',     w: 3, h: 3 }, defaultConfig: () => JSON.stringify({ targetUtc: new Date(Date.now() + 7*86400000).toISOString(), label: 'Hedef' }), render: renderCountdown },
+        Progress:  { meta: { label: 'Progress',   icon: 'fa-bars-progress',      w: 3, h: 3 }, defaultConfig: () => JSON.stringify({ percentage: 0 }), render: renderProgress },
+        Note:      { meta: { label: 'Not',        icon: 'fa-note-sticky',        w: 4, h: 4 }, defaultConfig: () => JSON.stringify({ content: '' }), render: renderNote },
+        Link:      { meta: { label: 'Link',       icon: 'fa-link',               w: 3, h: 4 }, defaultConfig: () => null, render: renderLinks },
+
+        // F2 chart family
+        Line:      { meta: { label: 'Line',       icon: 'fa-chart-line',         w: 6, h: 4 }, defaultConfig: () => JSON.stringify({ days: 30, sourceChecklistWidgetId: null }), render: renderLine },
+        Bar:       { meta: { label: 'Bar',        icon: 'fa-chart-column',       w: 6, h: 4 }, defaultConfig: () => JSON.stringify({ days: 30 }), render: renderBar },
+        Heatmap:   { meta: { label: 'Heatmap',    icon: 'fa-table-cells',        w: 8, h: 3 }, defaultConfig: () => JSON.stringify({ weeks: 26 }), render: renderHeatmap },
+        Donut:     { meta: { label: 'Donut',      icon: 'fa-chart-pie',          w: 4, h: 4 }, defaultConfig: () => JSON.stringify({ segments: [{label:'A',value:1},{label:'B',value:1}] }), render: renderDonut },
+        Kpi:       { meta: { label: 'KPI',        icon: 'fa-gauge-high',         w: 3, h: 3 }, defaultConfig: () => JSON.stringify({ label: 'Metric', target: null, sourceChecklistWidgetId: null }), render: renderKpi },
+        Streak:    { meta: { label: 'Streak',     icon: 'fa-fire',               w: 3, h: 3 }, defaultConfig: () => JSON.stringify({ label: 'Üst üste gün', sourceChecklistWidgetId: null }), render: renderStreak },
+
+        // F3 sprint widget
+        Burndown:  { meta: { label: 'Burndown',   icon: 'fa-arrow-trend-down',   w: 8, h: 4 }, defaultConfig: () => JSON.stringify({ sourceChecklistWidgetId: null }), render: renderBurndown }
+    };
+
+    // ── Boot ───────────────────────────────────────────────────────────
+    document.addEventListener('DOMContentLoaded', async () => {
+        initGrid();
+        wireToolbar();
+        wireModals();
+        await loadBoardList();
+        await refresh();
+    });
+
+    function initGrid() {
+        grid = GridStack.init({
+            cellHeight: 70,
+            margin: 8,
+            float: false,
+            handle: '.widget-header',
+            resizable: { handles: 'se' },
+            column: 12,
+            disableOneColumnMode: false
+        });
+
+        // Debounce layout saves — Gridstack fires 'change' on every drag pixel; we batch the
+        // final positions ~400ms after the last move so we don't hammer the API.
+        let saveTimer = null;
+        grid.on('change', (_, changedItems) => {
+            if (!changedItems || changedItems.length === 0) return;
+            clearTimeout(saveTimer);
+            saveTimer = setTimeout(() => persistLayout(changedItems), 400);
+        });
+    }
+
+    function wireToolbar() {
+        document.getElementById('boardSwitcher').addEventListener('change', async (e) => {
+            currentBoardId = parseInt(e.target.value, 10);
+            await refresh();
+        });
+        document.getElementById('addBoardBtn').addEventListener('click', () => openAddBoardModal());
+        document.getElementById('editBoardBtn').addEventListener('click', () => openEditBoardModal());
+        document.getElementById('addWidgetBtn').addEventListener('click', () => openAddWidgetModal());
+    }
+
+    function wireModals() {
+        document.querySelectorAll('.ws-modal-backdrop').forEach(bd => {
+            bd.addEventListener('click', (e) => { if (e.target === bd) closeAllModals(); });
+            bd.querySelectorAll('[data-action="cancel"]').forEach(b => b.addEventListener('click', closeAllModals));
+        });
+        document.getElementById('newBoardKind').addEventListener('change', (e) => {
+            document.getElementById('sprintFields').style.display = e.target.value === 'Sprint' ? 'block' : 'none';
+        });
+        document.getElementById('confirmAddBoard').addEventListener('click', submitAddBoard);
+        document.getElementById('confirmEditBoard').addEventListener('click', submitEditBoard);
+        document.getElementById('archiveBoardBtn').addEventListener('click', submitArchiveBoard);
+        document.getElementById('confirmAddWidget').addEventListener('click', submitAddWidget);
+
+        // Build the widget type picker grid once
+        const grid = document.getElementById('widgetTypeGrid');
+        for (const [type, def] of Object.entries(WIDGET_TYPES)) {
+            const card = document.createElement('div');
+            card.className = 'widget-type-card';
+            card.dataset.type = type;
+            card.innerHTML = `<i class="fa-solid ${def.meta.icon}"></i><div>${def.meta.label}</div>`;
+            card.addEventListener('click', () => {
+                grid.querySelectorAll('.widget-type-card').forEach(c => c.classList.remove('selected'));
+                card.classList.add('selected');
+            });
+            grid.appendChild(card);
+        }
+    }
+
+    // ── Data loading ──────────────────────────────────────────────────
+    async function loadBoardList() {
+        const res = await fetch('/api/workspace/boards');
+        if (!res.ok) return;
+        const boards = await res.json();
+        const sel = document.getElementById('boardSwitcher');
+        sel.innerHTML = '';
+        for (const b of boards) {
+            const opt = document.createElement('option');
+            opt.value = b.id;
+            const prefix = b.kind === 'Sprint' ? '🏁 ' : '';
+            opt.textContent = `${prefix}${b.name}`;
+            if (b.id === currentBoardId) opt.selected = true;
+            sel.appendChild(opt);
+        }
+    }
+
+    async function refresh() {
+        const res = await fetch(`/api/workspace/boards/${currentBoardId}`);
+        if (!res.ok) return;
+        currentBoard = await res.json();
+        renderSprintBanner(currentBoard);
+        renderAllWidgets(currentBoard.widgets);
+    }
+
+    // ── Rendering ─────────────────────────────────────────────────────
+    function renderSprintBanner(board) {
+        const banner = document.getElementById('sprintBanner');
+        if (board.kind !== 'Sprint') { banner.style.display = 'none'; return; }
+
+        const start = board.startUtc ? new Date(board.startUtc) : null;
+        const end   = board.endUtc   ? new Date(board.endUtc)   : null;
+        const today = new Date();
+        const daysLeft = end ? Math.max(0, Math.ceil((end - today) / 86400000)) : null;
+        const daysTotal = start && end ? Math.max(1, Math.ceil((end - start) / 86400000)) : null;
+
+        banner.style.display = 'flex';
+        banner.innerHTML = `
+            <div class="goal"><strong>🎯 ${escapeHtml(board.goalText || 'Hedef tanımlı değil')}</strong></div>
+            <div class="dates">${start ? start.toISOString().slice(0,10) : '?'} → ${end ? end.toISOString().slice(0,10) : '?'}</div>
+            ${daysLeft != null ? `<div class="stat"><div class="n">${daysLeft}</div><div class="l">gün kaldı</div></div>` : ''}
+            ${daysTotal != null ? `<div class="stat"><div class="n">${daysTotal}</div><div class="l">toplam gün</div></div>` : ''}
+        `;
+    }
+
+    function renderAllWidgets(widgets) {
+        // Destroy any Chart.js instances tied to widgets we're about to wipe — leaking chart
+        // instances across re-renders pegs CPU and the canvas stops updating.
+        for (const c of charts.values()) c.destroy();
+        charts.clear();
+
+        grid.removeAll(false);
+        if (!widgets || widgets.length === 0) {
+            document.getElementById('emptyState').style.display = 'block';
+            return;
+        }
+        document.getElementById('emptyState').style.display = 'none';
+
+        for (const w of widgets) addWidgetToGrid(w);
+    }
+
+    function addWidgetToGrid(w) {
+        const def = WIDGET_TYPES[w.type];
+        if (!def) { console.warn('Unknown widget type', w.type); return; }
+
+        const item = document.createElement('div');
+        item.classList.add('grid-stack-item');
+        item.dataset.widgetId = w.id;
+        item.setAttribute('gs-x', w.gridX);
+        item.setAttribute('gs-y', w.gridY);
+        item.setAttribute('gs-w', w.gridW);
+        item.setAttribute('gs-h', w.gridH);
+
+        const content = document.createElement('div');
+        content.className = 'grid-stack-item-content';
+        content.innerHTML = `
+            <div class="widget-header">
+                <h4>${escapeHtml(w.title || def.meta.label)}</h4>
+                <div class="widget-actions">
+                    <button data-act="settings" title="Ayarlar"><i class="fa-solid fa-gear"></i></button>
+                    <button data-act="delete" title="Sil"><i class="fa-solid fa-trash"></i></button>
+                </div>
+            </div>
+            <div class="widget-body"></div>`;
+        item.appendChild(content);
+        grid.makeWidget(item);
+
+        // Wire widget-level actions
+        content.querySelector('[data-act="delete"]').addEventListener('click', () => deleteWidget(w.id));
+        content.querySelector('[data-act="settings"]').addEventListener('click', () => openWidgetSettings(w));
+
+        // Render the body via the type-specific renderer
+        const body = content.querySelector('.widget-body');
+        try { def.render(w, body); } catch (err) { body.textContent = 'Render hatası: ' + err.message; }
+    }
+
+    // ── Widget renderers ──────────────────────────────────────────────
+    function renderChecklist(w, el) {
+        const items = w.items || [];
+        const done = items.filter(i => i.isDone).length;
+        const pct = items.length ? Math.round(done / items.length * 100) : 0;
+        el.innerHTML = `
+            <div class="checklist-input">
+                <input type="text" placeholder="Yeni madde..." maxlength="500">
+                <button>Ekle</button>
+            </div>
+            <ul class="checklist-list">
+                ${items.map(i => `
+                    <li data-id="${i.id}">
+                        <input type="checkbox" ${i.isDone ? 'checked' : ''}>
+                        <span class="${i.isDone ? 'done' : ''}">${escapeHtml(i.label)}</span>
+                        <button class="del" title="Sil"><i class="fa-solid fa-xmark"></i></button>
+                    </li>`).join('')}
+            </ul>
+            <div class="checklist-progress">${done}/${items.length} tamamlandı · ${pct}%</div>`;
+
+        const input = el.querySelector('input[type="text"]');
+        const addBtn = el.querySelector('button');
+        const addItem = async () => {
+            const label = input.value.trim();
+            if (!label) return;
+            input.value = '';
+            await api('POST', `/api/workspace/widgets/${w.id}/items`, { label });
+            await refresh();
+        };
+        addBtn.addEventListener('click', addItem);
+        input.addEventListener('keydown', (e) => { if (e.key === 'Enter') addItem(); });
+
+        el.querySelectorAll('.checklist-list li').forEach(li => {
+            const id = parseInt(li.dataset.id, 10);
+            li.querySelector('input[type=checkbox]').addEventListener('change', async (e) => {
+                await api('PATCH', `/api/workspace/widgets/${w.id}/items/${id}`, { isDone: e.target.checked });
+                await refresh();
+            });
+            li.querySelector('.del').addEventListener('click', async () => {
+                if (!confirm('Sil?')) return;
+                await api('DELETE', `/api/workspace/widgets/${w.id}/items/${id}`);
+                await refresh();
+            });
+        });
+    }
+
+    function renderCounter(w, el) {
+        const cfg = safeJson(w.configJson) || { value: 0, label: '' };
+        el.innerHTML = `
+            <div class="counter-value">${cfg.value ?? 0}</div>
+            <div class="counter-label">${escapeHtml(cfg.label || '')}</div>
+            <div class="counter-controls">
+                <button data-op="-1">−1</button>
+                <button data-op="-5">−5</button>
+                <button data-op="+1">+1</button>
+                <button data-op="+5">+5</button>
+                <button data-op="reset">Sıfırla</button>
+            </div>`;
+        el.querySelectorAll('button').forEach(btn => {
+            btn.addEventListener('click', async () => {
+                const op = btn.dataset.op;
+                const next = op === 'reset' ? 0 : (parseFloat(cfg.value) || 0) + parseFloat(op);
+                cfg.value = next;
+                await api('PATCH', `/api/workspace/widgets/${w.id}`, { configJson: JSON.stringify(cfg) });
+                w.configJson = JSON.stringify(cfg);
+                renderCounter(w, el);
+            });
+        });
+    }
+
+    function renderCountdown(w, el) {
+        const cfg = safeJson(w.configJson) || {};
+        const target = cfg.targetUtc ? new Date(cfg.targetUtc) : null;
+        const now = new Date();
+        const days = target ? Math.ceil((target - now) / 86400000) : null;
+        const expired = days != null && days <= 0;
+        el.innerHTML = `
+            <div class="countdown-target">${escapeHtml(cfg.label || 'Hedef')}: ${target ? target.toISOString().slice(0,10) : '?'}</div>
+            <div class="countdown-days ${expired ? 'countdown-expired' : ''}">
+                ${days == null ? '—' : (expired ? 'Tarih geçti' : `${days} gün`)}
+            </div>`;
+    }
+
+    function renderProgress(w, el) {
+        const cfg = safeJson(w.configJson) || { percentage: 0 };
+
+        // If linked to a checklist, compute the % live from that widget's items rather than the
+        // stored value. Keeps the bar honest without a recurring background job.
+        let pct = clamp(parseFloat(cfg.percentage) || 0, 0, 100);
+        if (cfg.linkedChecklistWidgetId) {
+            const src = currentBoard?.widgets?.find(x => x.id === cfg.linkedChecklistWidgetId && x.type === 'Checklist');
+            if (src && src.items?.length) {
+                const done = src.items.filter(i => i.isDone).length;
+                pct = Math.round(done / src.items.length * 100);
+            }
+        }
+        el.innerHTML = `
+            <div class="progress-track"><div class="progress-fill" style="width:${pct}%"></div></div>
+            <div class="progress-meta"><span>${pct}%</span><span>${cfg.linkedChecklistWidgetId ? '🔗 checklist bağlı' : 'manuel'}</span></div>
+            ${!cfg.linkedChecklistWidgetId ? `
+                <input type="range" min="0" max="100" value="${pct}" style="width:100%;margin-top:0.5rem;">
+            ` : ''}`;
+        const slider = el.querySelector('input[type=range]');
+        if (slider) {
+            slider.addEventListener('change', async () => {
+                cfg.percentage = parseInt(slider.value, 10);
+                await api('PATCH', `/api/workspace/widgets/${w.id}`, { configJson: JSON.stringify(cfg) });
+                w.configJson = JSON.stringify(cfg);
+                renderProgress(w, el);
+            });
+        }
+    }
+
+    function renderNote(w, el) {
+        const cfg = safeJson(w.configJson) || { content: '' };
+        el.innerHTML = `
+            <div class="note-edit">
+                <textarea placeholder="Notunu yaz...">${escapeHtml(cfg.content || '')}</textarea>
+            </div>`;
+        const ta = el.querySelector('textarea');
+        let timer = null;
+        ta.addEventListener('input', () => {
+            clearTimeout(timer);
+            timer = setTimeout(async () => {
+                cfg.content = ta.value;
+                await api('PATCH', `/api/workspace/widgets/${w.id}`, { configJson: JSON.stringify(cfg) });
+                w.configJson = JSON.stringify(cfg);
+                stamp('Kaydedildi');
+            }, 600);
+        });
+    }
+
+    function renderLinks(w, el) {
+        const items = w.items || [];
+        el.innerHTML = `
+            <div class="checklist-input">
+                <input type="text" placeholder="Etiket" maxlength="200" id="lbl-${w.id}" style="flex:0 0 35%;">
+                <input type="text" placeholder="https://..." maxlength="2000" id="url-${w.id}">
+                <button>Ekle</button>
+            </div>
+            <ul class="link-list">
+                ${items.map(i => `
+                    <li data-id="${i.id}">
+                        <a href="${escapeAttr(i.value || '#')}" target="_blank" rel="noopener noreferrer">${escapeHtml(i.label)}</a>
+                        <button class="del"><i class="fa-solid fa-xmark"></i></button>
+                    </li>`).join('')}
+            </ul>`;
+        const labelInput = el.querySelector(`#lbl-${w.id}`);
+        const urlInput   = el.querySelector(`#url-${w.id}`);
+        el.querySelector('button').addEventListener('click', async () => {
+            const label = labelInput.value.trim();
+            const value = urlInput.value.trim();
+            if (!label || !value) return;
+            await api('POST', `/api/workspace/widgets/${w.id}/items`, { label, value });
+            await refresh();
+        });
+        el.querySelectorAll('.link-list .del').forEach(b => {
+            b.addEventListener('click', async () => {
+                const li = b.closest('li');
+                const id = parseInt(li.dataset.id, 10);
+                if (!confirm('Sil?')) return;
+                await api('DELETE', `/api/workspace/widgets/${w.id}/items/${id}`);
+                await refresh();
+            });
+        });
+    }
+
+    // ── Chart widget renderers (F2 + F3) ───────────────────────────────
+    // All share the same data path: fetch /api/workspace/widgets/{id}/metrics and
+    // hand the points to Chart.js. Streak/Burndown reduce the same data differently.
+    async function fetchMetrics(widgetId, fromUtc) {
+        const params = fromUtc ? `?fromUtc=${encodeURIComponent(fromUtc.toISOString())}` : '';
+        const res = await fetch(`/api/workspace/widgets/${widgetId}/metrics${params}`);
+        return res.ok ? await res.json() : [];
+    }
+
+    async function renderLine(w, el) {
+        const cfg = safeJson(w.configJson) || { days: 30 };
+        const since = new Date(Date.now() - (cfg.days || 30) * 86400000);
+        const data = await fetchMetrics(w.id, since);
+        el.innerHTML = `<canvas></canvas><div class="counter-label" style="margin-top:0.4rem;">${data.length} kayıt — son ${cfg.days || 30} gün</div>`;
+        const ctx = el.querySelector('canvas');
+        const grouped = groupByDay(data);
+        const chart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: grouped.map(p => p.day),
+                datasets: [{ data: grouped.map(p => p.sum), borderColor: '#06b6d4', backgroundColor: 'rgba(6,182,212,0.15)', fill: true, tension: 0.3, pointRadius: 2 }]
+            },
+            options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { x: { ticks: { color: '#888' } }, y: { ticks: { color: '#888' }, beginAtZero: true } } }
+        });
+        charts.set(w.id, chart);
+    }
+
+    async function renderBar(w, el) {
+        const cfg = safeJson(w.configJson) || { days: 30 };
+        const since = new Date(Date.now() - (cfg.days || 30) * 86400000);
+        const data = await fetchMetrics(w.id, since);
+        el.innerHTML = `<canvas></canvas>`;
+        const grouped = groupByDay(data);
+        const chart = new Chart(el.querySelector('canvas'), {
+            type: 'bar',
+            data: { labels: grouped.map(p => p.day), datasets: [{ data: grouped.map(p => p.sum), backgroundColor: '#6d28d9' }] },
+            options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { x: { ticks: { color: '#888' } }, y: { ticks: { color: '#888' }, beginAtZero: true } } }
+        });
+        charts.set(w.id, chart);
+    }
+
+    async function renderHeatmap(w, el) {
+        const cfg = safeJson(w.configJson) || { weeks: 26 };
+        const weeks = cfg.weeks || 26;
+        const since = new Date(Date.now() - weeks * 7 * 86400000);
+        const data = await fetchMetrics(w.id, since);
+
+        // Bucket metric entries by YYYY-MM-DD; the heatmap shows per-day intensity in a
+        // 7×weeks grid (rows = weekday, columns = ISO week).
+        const byDay = new Map();
+        for (const p of data) {
+            const k = p.recordedAtUtc.slice(0,10);
+            byDay.set(k, (byDay.get(k) || 0) + p.value);
+        }
+        const max = Math.max(1, ...byDay.values());
+        let html = '<div style="display:grid;grid-template-rows:repeat(7,1fr);grid-auto-flow:column;gap:3px;font-size:0;">';
+        const start = new Date(Date.now() - weeks * 7 * 86400000);
+        start.setHours(0,0,0,0);
+        for (let d = 0; d < weeks * 7; d++) {
+            const date = new Date(start.getTime() + d * 86400000);
+            const k = date.toISOString().slice(0,10);
+            const v = byDay.get(k) || 0;
+            const alpha = v === 0 ? 0.05 : 0.2 + 0.8 * (v / max);
+            html += `<div title="${k}: ${v}" style="width:12px;height:12px;border-radius:2px;background:rgba(6,182,212,${alpha});"></div>`;
+        }
+        html += '</div>';
+        const total = Array.from(byDay.values()).reduce((a, b) => a + b, 0);
+        el.innerHTML = html + `<div class="counter-label" style="margin-top:0.5rem;">${total} olay · son ${weeks} hafta</div>`;
+    }
+
+    async function renderDonut(w, el) {
+        const cfg = safeJson(w.configJson) || { segments: [] };
+        el.innerHTML = `<canvas></canvas>`;
+        const chart = new Chart(el.querySelector('canvas'), {
+            type: 'doughnut',
+            data: { labels: cfg.segments.map(s => s.label), datasets: [{ data: cfg.segments.map(s => s.value), backgroundColor: ['#6d28d9','#06b6d4','#ec4899','#f59e0b','#22c55e','#a855f7'] }] },
+            options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom', labels: { color: '#888', boxWidth: 10 } } }, cutout: '60%' }
+        });
+        charts.set(w.id, chart);
+    }
+
+    async function renderKpi(w, el) {
+        const cfg = safeJson(w.configJson) || { label: '' };
+        const since = new Date(Date.now() - 30 * 86400000);
+        const data = await fetchMetrics(w.id, since);
+        const todayKey = new Date().toISOString().slice(0,10);
+        const yesterdayKey = new Date(Date.now() - 86400000).toISOString().slice(0,10);
+        const today = data.filter(p => p.recordedAtUtc.slice(0,10) === todayKey).reduce((a, b) => a + b.value, 0);
+        const yesterday = data.filter(p => p.recordedAtUtc.slice(0,10) === yesterdayKey).reduce((a, b) => a + b.value, 0);
+        const delta = today - yesterday;
+        const arrow = delta > 0 ? '▲' : delta < 0 ? '▼' : '·';
+        const color = delta > 0 ? '#22c55e' : delta < 0 ? '#ef4444' : '#888';
+        el.innerHTML = `
+            <div class="counter-value">${today.toFixed(0)}</div>
+            <div class="counter-label">${escapeHtml(cfg.label || 'KPI')}</div>
+            <div style="margin-top:0.4rem;font-size:0.8rem;color:${color};">${arrow} ${Math.abs(delta).toFixed(0)} dün</div>`;
+    }
+
+    async function renderStreak(w, el) {
+        const cfg = safeJson(w.configJson) || { label: '' };
+        const since = new Date(Date.now() - 365 * 86400000);
+        const data = await fetchMetrics(w.id, since);
+        const days = new Set(data.map(p => p.recordedAtUtc.slice(0,10)));
+        // Streak = consecutive days ending today (or yesterday if today missing yet)
+        let streak = 0;
+        let cursor = new Date();
+        cursor.setHours(0,0,0,0);
+        while (true) {
+            const k = cursor.toISOString().slice(0,10);
+            if (days.has(k)) { streak++; cursor.setTime(cursor.getTime() - 86400000); }
+            else if (streak === 0 && k === new Date().toISOString().slice(0,10)) { cursor.setTime(cursor.getTime() - 86400000); }
+            else break;
+        }
+        el.innerHTML = `
+            <div style="display:flex;align-items:baseline;gap:0.5rem;">
+                <div class="counter-value" style="background:linear-gradient(135deg,#f59e0b,#ef4444);-webkit-background-clip:text;-webkit-text-fill-color:transparent;">${streak}</div>
+                <div style="font-size:1.2rem;">🔥</div>
+            </div>
+            <div class="counter-label">${escapeHtml(cfg.label || 'gün üst üste')}</div>`;
+    }
+
+    async function renderBurndown(w, el) {
+        // Sprint burndown: ideal line from total items at start → 0 at end vs. actual remaining.
+        // Uses the parent board's sprint dates + the "Sprint Backlog" checklist (or the only
+        // checklist on the board) as the source. Falls back to a neutral message if no sprint.
+        if (currentBoard?.kind !== 'Sprint' || !currentBoard.startUtc || !currentBoard.endUtc) {
+            el.innerHTML = `<div class="counter-label">Burndown sadece Sprint board'larında çalışır.</div>`;
+            return;
+        }
+        const checklist = currentBoard.widgets.find(x => x.type === 'Checklist');
+        if (!checklist) {
+            el.innerHTML = `<div class="counter-label">Burndown için bir Checklist widget'ı bekleniyor.</div>`;
+            return;
+        }
+        const total = checklist.items.length;
+        const start = new Date(currentBoard.startUtc); start.setHours(0,0,0,0);
+        const end   = new Date(currentBoard.endUtc);   end.setHours(0,0,0,0);
+        const today = new Date(); today.setHours(0,0,0,0);
+        const totalDays = Math.max(1, Math.round((end - start) / 86400000));
+
+        // Build day labels start → end
+        const labels = [];
+        const ideal = [];
+        const actual = [];
+        for (let i = 0; i <= totalDays; i++) {
+            const d = new Date(start.getTime() + i * 86400000);
+            const k = d.toISOString().slice(0,10);
+            labels.push(k.slice(5));
+            ideal.push(+(total * (1 - i / totalDays)).toFixed(1));
+            if (d <= today) {
+                const remaining = checklist.items.filter(it => !it.isDone || (it.doneAtUtc && new Date(it.doneAtUtc) > d)).length;
+                actual.push(remaining);
+            } else {
+                actual.push(null);
+            }
+        }
+        el.innerHTML = `<canvas></canvas>`;
+        const chart = new Chart(el.querySelector('canvas'), {
+            type: 'line',
+            data: { labels, datasets: [
+                { label: 'İdeal',  data: ideal,  borderColor: 'rgba(168,85,247,0.6)', borderDash: [6,4], pointRadius: 0, tension: 0 },
+                { label: 'Gerçek', data: actual, borderColor: '#06b6d4', backgroundColor: 'rgba(6,182,212,0.1)', fill: true, tension: 0.2, pointRadius: 3, spanGaps: false }
+            ]},
+            options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { labels: { color: '#aaa', boxWidth: 10 } } }, scales: { x: { ticks: { color: '#888', maxRotation: 0, autoSkip: true } }, y: { ticks: { color: '#888' }, beginAtZero: true } } }
+        });
+        charts.set(w.id, chart);
+    }
+
+    // ── Mutations ─────────────────────────────────────────────────────
+    async function persistLayout(items) {
+        const payload = items.map(it => ({
+            id: parseInt(it.el.dataset.widgetId, 10),
+            gridX: it.x, gridY: it.y, gridW: it.w, gridH: it.h
+        })).filter(p => Number.isInteger(p.id));
+        if (payload.length === 0) return;
+        await api('PATCH', `/api/workspace/boards/${currentBoardId}/widgets/layout`, payload);
+        stamp('Konum kaydedildi');
+    }
+
+    async function deleteWidget(id) {
+        if (!confirm('Bu widget silinsin mi?')) return;
+        await api('DELETE', `/api/workspace/widgets/${id}`);
+        await refresh();
+    }
+
+    function openWidgetSettings(w) {
+        // Simple inline approach: prompt for new title; deep config edit lives inside each
+        // widget body (Counter buttons, Note textarea, etc.) rather than a separate modal.
+        const newTitle = prompt('Widget başlığı', w.title || '');
+        if (newTitle == null) return;
+        api('PATCH', `/api/workspace/widgets/${w.id}`, { title: newTitle }).then(refresh);
+    }
+
+    // ── Modal handlers ────────────────────────────────────────────────
+    function openAddBoardModal() { closeAllModals(); document.getElementById('addBoardModal').classList.add('open'); }
+    function openEditBoardModal() {
+        if (!currentBoard) return;
+        document.getElementById('editBoardName').value  = currentBoard.name;
+        document.getElementById('editBoardGoal').value  = currentBoard.goalText || '';
+        document.getElementById('editBoardRetro').value = currentBoard.retroNotes || '';
+        if (currentBoard.startUtc) document.getElementById('editBoardStart').value = currentBoard.startUtc.slice(0,16);
+        if (currentBoard.endUtc)   document.getElementById('editBoardEnd').value   = currentBoard.endUtc.slice(0,16);
+        document.getElementById('editSprintFields').style.display = currentBoard.kind === 'Sprint' ? 'block' : 'none';
+        closeAllModals(); document.getElementById('editBoardModal').classList.add('open');
+    }
+    function openAddWidgetModal() {
+        document.querySelectorAll('.widget-type-card').forEach(c => c.classList.remove('selected'));
+        document.getElementById('newWidgetTitle').value = '';
+        closeAllModals(); document.getElementById('addWidgetModal').classList.add('open');
+    }
+    function closeAllModals() { document.querySelectorAll('.ws-modal-backdrop').forEach(b => b.classList.remove('open')); }
+
+    async function submitAddBoard() {
+        const name = document.getElementById('newBoardName').value.trim();
+        const kind = document.getElementById('newBoardKind').value;
+        if (!name) return;
+        const body = { name, kind };
+        if (kind === 'Sprint') {
+            body.startUtc = toIso(document.getElementById('newBoardStart').value);
+            body.endUtc   = toIso(document.getElementById('newBoardEnd').value);
+            body.goalText = document.getElementById('newBoardGoal').value.trim() || null;
+        }
+        const res = await api('POST', '/api/workspace/boards', body);
+        closeAllModals();
+        await loadBoardList();
+        if (res && res.id) { currentBoardId = res.id; await refresh(); await loadBoardList(); }
+    }
+
+    async function submitEditBoard() {
+        const body = {
+            name: document.getElementById('editBoardName').value.trim(),
+            goalText: document.getElementById('editBoardGoal').value.trim() || null,
+            retroNotes: document.getElementById('editBoardRetro').value.trim() || null,
+            startUtc: toIso(document.getElementById('editBoardStart').value),
+            endUtc:   toIso(document.getElementById('editBoardEnd').value)
+        };
+        await api('PATCH', `/api/workspace/boards/${currentBoardId}`, body);
+        closeAllModals();
+        await loadBoardList();
+        await refresh();
+    }
+
+    async function submitArchiveBoard() {
+        if (!confirm('Bu board arşivlensin mi? Sprint için "kapatma" olarak da kullanabilirsin.')) return;
+        await api('POST', `/api/workspace/boards/${currentBoardId}/archive`);
+        closeAllModals();
+        // Switch to default board after archive
+        const list = await fetch('/api/workspace/boards').then(r => r.json());
+        if (list.length > 0) { currentBoardId = list[0].id; }
+        await loadBoardList();
+        await refresh();
+    }
+
+    async function submitAddWidget() {
+        const selected = document.querySelector('.widget-type-card.selected');
+        if (!selected) { alert('Lütfen bir tip seç.'); return; }
+        const type = selected.dataset.type;
+        const title = document.getElementById('newWidgetTitle').value.trim() || null;
+        const def = WIDGET_TYPES[type];
+        await api('POST', `/api/workspace/boards/${currentBoardId}/widgets`, {
+            type, title,
+            gridX: 0, gridY: 0, gridW: def.meta.w, gridH: def.meta.h,
+            configJson: def.defaultConfig()
+        });
+        closeAllModals();
+        await refresh();
+    }
+
+    // ── Utils ─────────────────────────────────────────────────────────
+    async function api(method, url, body) {
+        const opts = { method, headers: { 'Content-Type': 'application/json' } };
+        if (body !== undefined) opts.body = JSON.stringify(body);
+        const res = await fetch(url, opts);
+        if (!res.ok) { console.error(method, url, res.status); return null; }
+        if (res.status === 204) return true;
+        const ct = res.headers.get('content-type') || '';
+        return ct.includes('application/json') ? await res.json() : true;
+    }
+    function safeJson(s) { try { return s ? JSON.parse(s) : null; } catch { return null; } }
+    function escapeHtml(s) { const d = document.createElement('div'); d.textContent = s ?? ''; return d.innerHTML; }
+    function escapeAttr(s) { return String(s ?? '').replace(/"/g, '&quot;'); }
+    function clamp(n, lo, hi) { return Math.max(lo, Math.min(hi, n)); }
+    function toIso(localValue) { return localValue ? new Date(localValue).toISOString() : null; }
+    function stamp(text) { document.getElementById('lastSaved').textContent = text + ' · ' + new Date().toLocaleTimeString(); }
+
+    function groupByDay(points) {
+        const map = new Map();
+        for (const p of points) {
+            const k = p.recordedAtUtc.slice(0,10);
+            map.set(k, (map.get(k) || 0) + p.value);
+        }
+        return Array.from(map.entries()).sort((a, b) => a[0].localeCompare(b[0])).map(([day, sum]) => ({ day, sum }));
+    }
+</script>
