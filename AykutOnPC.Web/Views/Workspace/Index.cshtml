@@ -168,6 +168,14 @@
         <span class="kb-filter-chip" data-pri="2" style="--chip-bg:rgba(245,158,11,0.18); color:#fcd34d;">P2</span>
         <span class="kb-filter-chip" data-pri="3" style="--chip-bg:rgba(100,116,139,0.18); color:#cbd5e1;">P3</span>
     </div>
+    <!-- Tarih (due date) filtre — tek seçim. Tekrar tıklayınca temizler. -->
+    <div id="kbDateChips" style="display:flex; gap:0.35rem;">
+        <span class="kb-filter-chip" data-date="overdue" style="--chip-bg:rgba(239,68,68,0.18); color:#fca5a5;">Geçmiş</span>
+        <span class="kb-filter-chip" data-date="today"   style="--chip-bg:rgba(6,182,212,0.18); color:#67e8f9;">Bugün</span>
+        <span class="kb-filter-chip" data-date="week"    style="--chip-bg:rgba(168,85,247,0.18); color:#d8b4fe;">Bu hafta</span>
+        <span class="kb-filter-chip" data-date="month"   style="--chip-bg:rgba(34,197,94,0.18); color:#86efac;">Bu ay</span>
+        <span class="kb-filter-chip" data-date="none"    style="--chip-bg:rgba(100,116,139,0.18); color:#cbd5e1;">Tarihsiz</span>
+    </div>
     <div class="grow"></div>
     <button id="kbManageLabelsBtn" class="kb-btn"><i class="fa-solid fa-tags"></i> Etiketler</button>
     <button id="kbNewPbiBtn" class="kb-btn primary"><i class="fa-solid fa-plus"></i> Yeni Kart</button>
@@ -269,7 +277,11 @@
         search: '',
         labelIds: new Set(),
         priorities: new Set(),
-        hideDone: false
+        hideDone: false,
+        // Single-select: 'overdue' | 'today' | 'week' | 'month' | 'none' | null.
+        // Single-select instead of multi because "overdue OR today" is rarely what you
+        // mean — combinations get confusing fast. Clear by clicking the active chip again.
+        dateRange: null
     };
 
     document.addEventListener('DOMContentLoaded', async () => {
@@ -303,6 +315,17 @@
                 if (filter.priorities.has(p)) filter.priorities.delete(p);
                 else filter.priorities.add(p);
                 chip.classList.toggle('on');
+                renderBoard();
+            });
+        });
+        // Date chips: radio-style (only one active at a time). Click the active one to clear.
+        document.querySelectorAll('#kbDateChips .kb-filter-chip').forEach(chip => {
+            chip.addEventListener('click', () => {
+                const value = chip.dataset.date;
+                const wasOn = chip.classList.contains('on');
+                document.querySelectorAll('#kbDateChips .kb-filter-chip').forEach(c => c.classList.remove('on'));
+                filter.dateRange = wasOn ? null : value;
+                if (!wasOn) chip.classList.add('on');
                 renderBoard();
             });
         });
@@ -383,7 +406,39 @@
             const hay = (p.title + ' ' + (p.description || '')).toLowerCase();
             if (!hay.includes(filter.search)) return false;
         }
+        if (filter.dateRange && !matchesDateFilter(p)) return false;
         return true;
+    }
+
+    // Due-date filter — all comparisons normalize to midnight UTC so "today" matches the
+    // calendar day in the user's timezone the same way the card chip renders the date.
+    function matchesDateFilter(p) {
+        const due = p.dueDateUtc ? new Date(p.dueDateUtc) : null;
+        const today = new Date(); today.setHours(0,0,0,0);
+
+        switch (filter.dateRange) {
+            case 'none':
+                return !due;
+            case 'overdue':
+                // Geçmiş = past due + still open (Done cards don't count as overdue)
+                return !!due && due < today && p.state !== 'Done';
+            case 'today': {
+                if (!due) return false;
+                const d = new Date(due); d.setHours(0,0,0,0);
+                return d.getTime() === today.getTime();
+            }
+            case 'week': {
+                if (!due) return false;
+                const end = new Date(today.getTime() + 7 * 86400000);
+                return due >= today && due < end;
+            }
+            case 'month': {
+                if (!due) return false;
+                const end = new Date(today.getTime() + 30 * 86400000);
+                return due >= today && due < end;
+            }
+            default: return true;
+        }
     }
 
     function renderCard(p) {
