@@ -15,10 +15,9 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     public DbSet<PageView> PageViews { get; set; }
     public DbSet<ChatLog> ChatLogs { get; set; }
     public DbSet<BlogPost> BlogPosts { get; set; }
-    public DbSet<Board> Boards { get; set; }
-    public DbSet<Widget> Widgets { get; set; }
-    public DbSet<WidgetItem> WidgetItems { get; set; }
-    public DbSet<MetricEntry> MetricEntries { get; set; }
+    public DbSet<Pbi> Pbis { get; set; }
+    public DbSet<Label> Labels { get; set; }
+    public DbSet<PbiLabel> PbiLabels { get; set; }
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
@@ -106,54 +105,42 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             entity.HasIndex(e => new { e.IsPublished, e.PublishedAtUtc }).HasDatabaseName("IX_BlogPosts_Published_PublishedAt");
         });
 
-        // ── Workspace (Boards/Widgets/WidgetItems/MetricEntries) ──────────────
-        // Tree: User → Board → Widget → WidgetItem + MetricEntry. Cascade deletes
-        // keep cleanup atomic (delete a board → all widgets + their content go too).
-        // ConfigJson / MetaJson live in jsonb so per-widget settings stay flexible
-        // without schema churn for every new widget type.
-        modelBuilder.Entity<Board>(entity =>
+        // ── Workspace Kanban (Pbis + Labels + PbiLabels) ──────────────────────
+        // Single-user, single-board Azure DevOps-style Kanban. State drives the column
+        // (Backlog/Todo/Doing/Done), SortOrder positions within the column. Labels are
+        // M:N via PbiLabels; junction has a composite PK so the same label can't be
+        // attached twice. Cascade on Pbi delete → junction rows go; Label delete cascades
+        // its own junction rows but leaves the Pbi alone.
+        modelBuilder.Entity<Pbi>(entity =>
         {
             entity.HasKey(e => e.Id);
-            entity.Property(e => e.Name).IsRequired().HasMaxLength(100);
-            entity.Property(e => e.Kind).IsRequired().HasMaxLength(20);
-            // Board list view: order by UserId + active first + sort order
-            entity.HasIndex(e => new { e.UserId, e.ArchivedAtUtc, e.SortOrder }).HasDatabaseName("IX_Boards_User_Archived_Sort");
+            entity.Property(e => e.Title).IsRequired().HasMaxLength(300);
+            entity.Property(e => e.State).IsRequired().HasMaxLength(20);
+            // Column render is hot path: "give me every Pbi grouped by state, sorted within"
+            entity.HasIndex(e => new { e.State, e.SortOrder }).HasDatabaseName("IX_Pbis_State_Sort");
+            entity.HasIndex(e => e.CompletedAtUtc).HasDatabaseName("IX_Pbis_CompletedAt");
         });
 
-        modelBuilder.Entity<Widget>(entity =>
+        modelBuilder.Entity<Label>(entity =>
         {
             entity.HasKey(e => e.Id);
-            entity.Property(e => e.Type).IsRequired().HasMaxLength(30);
-            entity.Property(e => e.ConfigJson).HasColumnType("jsonb");
-            entity.HasOne(e => e.Board)
-                  .WithMany(b => b.Widgets)
-                  .HasForeignKey(e => e.BoardId)
-                  .OnDelete(DeleteBehavior.Cascade);
-            // Hot path: "render this board" → fetch widgets ordered by sort then grid
-            entity.HasIndex(e => new { e.BoardId, e.ArchivedAtUtc, e.SortOrder }).HasDatabaseName("IX_Widgets_Board_Archived_Sort");
+            entity.Property(e => e.Name).IsRequired().HasMaxLength(40);
+            entity.Property(e => e.Color).IsRequired().HasMaxLength(7);
+            entity.HasIndex(e => e.Name).IsUnique().HasDatabaseName("IX_Labels_Name");
         });
 
-        modelBuilder.Entity<WidgetItem>(entity =>
+        modelBuilder.Entity<PbiLabel>(entity =>
         {
-            entity.HasKey(e => e.Id);
-            entity.Property(e => e.Label).IsRequired().HasMaxLength(500);
-            entity.Property(e => e.MetaJson).HasColumnType("jsonb");
-            entity.HasOne(e => e.Widget)
-                  .WithMany(w => w.Items)
-                  .HasForeignKey(e => e.WidgetId)
+            entity.HasKey(e => new { e.PbiId, e.LabelId });
+            entity.HasOne(e => e.Pbi)
+                  .WithMany(p => p.PbiLabels)
+                  .HasForeignKey(e => e.PbiId)
                   .OnDelete(DeleteBehavior.Cascade);
-            entity.HasIndex(e => new { e.WidgetId, e.SortOrder }).HasDatabaseName("IX_WidgetItems_Widget_Sort");
-        });
-
-        modelBuilder.Entity<MetricEntry>(entity =>
-        {
-            entity.HasKey(e => e.Id);
-            entity.HasOne(e => e.Widget)
-                  .WithMany()
-                  .HasForeignKey(e => e.WidgetId)
+            entity.HasOne(e => e.Label)
+                  .WithMany(l => l.PbiLabels)
+                  .HasForeignKey(e => e.LabelId)
                   .OnDelete(DeleteBehavior.Cascade);
-            // Time-series query: "last 30 days of values for this widget"
-            entity.HasIndex(e => new { e.WidgetId, e.RecordedAtUtc }).HasDatabaseName("IX_MetricEntries_Widget_RecordedAt");
+            entity.HasIndex(e => e.LabelId).HasDatabaseName("IX_PbiLabels_LabelId");
         });
     }
 }

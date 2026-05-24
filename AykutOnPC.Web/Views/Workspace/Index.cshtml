@@ -1,912 +1,598 @@
 @{
     ViewData["Title"] = "My Workspace";
     Layout = "_AdminLayout";
-    var initialBoardId = (int)ViewBag.InitialBoardId;
 }
 
-<!-- Gridstack 10.x — drag/resize widget grid -->
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/gridstack@10.3.1/dist/gridstack.min.css">
-<script src="https://cdn.jsdelivr.net/npm/gridstack@10.3.1/dist/gridstack-all.js"></script>
-<!-- Chart.js — reused by F2 chart widgets and F3 burndown -->
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+<!-- SortableJS — drag/drop between columns and within a column -->
+<script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.2/Sortable.min.js"></script>
 
 <style>
-    .ws-toolbar {
-        display: flex; align-items: center; gap: 1rem;
-        margin-bottom: 1.5rem; flex-wrap: wrap;
+    .kb-toolbar {
+        display: flex; align-items: center; gap: 0.75rem;
+        margin-bottom: 1.25rem; flex-wrap: wrap;
     }
-    .ws-toolbar h1 {
-        margin: 0; font-size: 1.6rem;
+    .kb-toolbar h1 {
+        margin: 0; font-size: 1.55rem;
         background: linear-gradient(135deg, #c4b5fd, #06b6d4);
-        -webkit-background-clip: text; -webkit-text-fill-color: transparent;
-        background-clip: text;
+        -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
     }
-    .ws-toolbar .grow { flex: 1; }
-    .ws-board-meta { color: var(--text-muted); font-size: 0.85rem; }
-    .ws-btn {
-        padding: 0.5rem 1rem; border-radius: 8px; border: 1px solid rgba(255,255,255,0.12);
+    .kb-toolbar .grow { flex: 1; }
+    .kb-input {
+        padding: 0.5rem 0.75rem; border-radius: 8px; border: 1px solid rgba(255,255,255,0.1);
+        background: rgba(10,10,15,0.7); color: var(--text-main); font-family: inherit; font-size: 0.9rem;
+        min-width: 220px;
+    }
+    .kb-btn {
+        padding: 0.5rem 0.95rem; border-radius: 8px; border: 1px solid rgba(255,255,255,0.12);
         background: rgba(255,255,255,0.04); color: var(--text-main); cursor: pointer;
         font-size: 0.85rem; transition: 0.15s; display: inline-flex; gap: 0.4rem; align-items: center;
     }
-    .ws-btn:hover { background: rgba(255,255,255,0.08); border-color: rgba(109,40,217,0.5); }
-    .ws-btn.primary { background: rgba(109,40,217,0.18); border-color: rgba(109,40,217,0.5); color: #c4b5fd; }
-    .ws-btn.primary:hover { background: rgba(109,40,217,0.28); }
-    .ws-btn.danger { color: #ef4444; border-color: rgba(239,68,68,0.25); }
-    .ws-select {
-        padding: 0.5rem 0.75rem; border-radius: 8px; border: 1px solid rgba(255,255,255,0.12);
-        background: rgba(10,10,15,0.7); color: var(--text-main); font-family: inherit; font-size: 0.9rem;
-    }
-    .ws-empty {
-        padding: 3rem; text-align: center; color: var(--text-muted);
-        border: 1px dashed rgba(255,255,255,0.1); border-radius: 14px;
-    }
+    .kb-btn:hover { background: rgba(255,255,255,0.08); border-color: rgba(109,40,217,0.5); }
+    .kb-btn.primary { background: rgba(109,40,217,0.18); border-color: rgba(109,40,217,0.5); color: #c4b5fd; }
+    .kb-btn.primary:hover { background: rgba(109,40,217,0.28); }
+    .kb-btn.danger { color: #ef4444; border-color: rgba(239,68,68,0.25); }
 
-    /* Gridstack item card styling */
-    .grid-stack { background: transparent; }
-    .grid-stack-item-content {
-        background: rgba(15,15,22,0.85);
-        border: 1px solid rgba(255,255,255,0.07);
-        border-radius: 14px;
-        padding: 1rem 1.1rem;
-        overflow: auto;
-        color: var(--text-main);
+    .kb-filter-chip {
+        display: inline-flex; align-items: center; gap: 0.4rem;
+        padding: 0.3rem 0.7rem; border-radius: 999px; font-size: 0.78rem; cursor: pointer;
+        border: 1px solid rgba(255,255,255,0.1); background: rgba(255,255,255,0.03);
+        color: var(--text-muted); user-select: none;
     }
-    .widget-header {
+    .kb-filter-chip.on { border-color: currentColor; background: var(--chip-bg, rgba(255,255,255,0.08)); }
+
+    .kb-toggle { display: inline-flex; align-items: center; gap: 0.4rem; color: var(--text-muted); font-size: 0.85rem; cursor: pointer; }
+    .kb-toggle input { accent-color: #6d28d9; }
+
+    /* ── Board (4 columns) ── */
+    .kb-board {
+        display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem;
+        min-height: calc(100vh - 220px);
+    }
+    @@media (max-width: 1100px) { .kb-board { grid-template-columns: repeat(2, 1fr); } }
+    @@media (max-width: 700px)  { .kb-board { grid-template-columns: 1fr; } }
+
+    .kb-col {
+        background: rgba(10,10,15,0.6); border: 1px solid rgba(255,255,255,0.06);
+        border-radius: 12px; padding: 0.85rem; display: flex; flex-direction: column;
+    }
+    .kb-col-header {
         display: flex; align-items: center; justify-content: space-between;
-        padding-bottom: 0.6rem; margin-bottom: 0.75rem;
+        padding-bottom: 0.6rem; margin-bottom: 0.6rem;
         border-bottom: 1px solid rgba(255,255,255,0.06);
-        cursor: move; /* drag handle */
     }
-    .widget-header h4 { margin: 0; font-size: 0.95rem; font-weight: 600; }
-    .widget-actions { display: flex; gap: 0.4rem; opacity: 0.5; transition: 0.15s; }
-    .grid-stack-item-content:hover .widget-actions { opacity: 1; }
-    .widget-actions button {
-        background: none; border: none; color: var(--text-muted); cursor: pointer; padding: 0.2rem;
-        border-radius: 4px;
-    }
-    .widget-actions button:hover { color: white; background: rgba(255,255,255,0.06); }
+    .kb-col-header h3 { margin: 0; font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-muted); }
+    .kb-col-count { color: var(--text-muted); font-size: 0.78rem; font-family: monospace; }
+    .kb-col-body { flex: 1; min-height: 80px; display: flex; flex-direction: column; gap: 0.5rem; }
+    .kb-col-body.sortable-drag-over { background: rgba(109,40,217,0.06); border-radius: 6px; }
 
-    /* Per-type internals — kept tight, more in JS render templates */
-    .checklist-input { display: flex; gap: 0.5rem; margin-bottom: 0.75rem; }
-    .checklist-input input {
-        flex: 1; padding: 0.4rem 0.6rem; border-radius: 6px;
-        background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1);
-        color: white; font-family: inherit; font-size: 0.85rem;
+    .kb-add-card {
+        background: none; border: 1px dashed rgba(255,255,255,0.12); border-radius: 8px;
+        padding: 0.55rem; color: var(--text-muted); cursor: pointer; font-size: 0.82rem;
+        margin-top: 0.4rem;
     }
-    .checklist-input button {
-        padding: 0.4rem 0.7rem; border-radius: 6px; border: none;
-        background: rgba(109,40,217,0.3); color: #c4b5fd; cursor: pointer; font-size: 0.85rem;
-    }
-    .checklist-list { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 0.3rem; }
-    .checklist-list li {
-        display: flex; align-items: center; gap: 0.5rem; padding: 0.3rem 0.4rem; border-radius: 6px;
-    }
-    .checklist-list li:hover { background: rgba(255,255,255,0.03); }
-    .checklist-list input[type=checkbox] { accent-color: #6d28d9; }
-    .checklist-list .done { text-decoration: line-through; color: var(--text-muted); }
-    .checklist-list .del { background: none; border: none; color: var(--text-muted); cursor: pointer; opacity: 0; }
-    .checklist-list li:hover .del { opacity: 1; }
-    .checklist-progress {
-        font-size: 0.75rem; color: var(--text-muted); margin-top: 0.5rem;
-    }
+    .kb-add-card:hover { color: white; border-color: rgba(109,40,217,0.5); }
 
-    .counter-value {
-        font-size: 2.8rem; font-weight: 800; line-height: 1;
-        background: linear-gradient(135deg, #6d28d9, #06b6d4);
-        -webkit-background-clip: text; -webkit-text-fill-color: transparent;
-        background-clip: text;
+    /* ── Cards ── */
+    .pbi-card {
+        background: rgba(20,20,28,0.95); border-radius: 10px; padding: 0.7rem 0.85rem;
+        border-left: 4px solid #64748b; cursor: grab;
+        transition: transform 0.12s, box-shadow 0.12s;
+        position: relative;
     }
-    .counter-controls { display: flex; gap: 0.3rem; margin-top: 0.5rem; }
-    .counter-controls button {
-        padding: 0.25rem 0.6rem; border-radius: 6px; border: 1px solid rgba(255,255,255,0.1);
-        background: rgba(255,255,255,0.04); color: var(--text-main); cursor: pointer; font-size: 0.85rem;
-    }
-    .counter-label { color: var(--text-muted); font-size: 0.85rem; }
+    .pbi-card:hover { box-shadow: 0 4px 14px rgba(0,0,0,0.4); transform: translateY(-1px); }
+    .pbi-card.sortable-ghost { opacity: 0.4; }
+    .pbi-card.sortable-chosen { cursor: grabbing; }
+    .pbi-card.p1 { border-left-color: #ef4444; }
+    .pbi-card.p2 { border-left-color: #f59e0b; }
+    .pbi-card.p3 { border-left-color: #64748b; }
+    .pbi-card.overdue { background: rgba(239,68,68,0.05); }
 
-    .countdown-target { font-size: 0.8rem; color: var(--text-muted); }
-    .countdown-days { font-size: 2.6rem; font-weight: 800; color: #06b6d4; line-height: 1; }
-    .countdown-expired { color: #ef4444; }
-
-    .progress-track {
-        background: rgba(255,255,255,0.06); border-radius: 999px; height: 10px; overflow: hidden;
-        margin: 0.75rem 0 0.4rem;
+    .pbi-card-title {
+        font-size: 0.92rem; line-height: 1.35; margin: 0;
+        word-break: break-word;
     }
-    .progress-fill {
-        height: 100%; background: linear-gradient(90deg, #6d28d9, #06b6d4); border-radius: 999px;
-        transition: width 0.4s;
+    .pbi-card.done .pbi-card-title { text-decoration: line-through; color: var(--text-muted); }
+    .pbi-card-desc {
+        color: var(--text-muted); font-size: 0.78rem; margin: 0.35rem 0 0;
+        display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
     }
-    .progress-meta { display: flex; justify-content: space-between; color: var(--text-muted); font-size: 0.8rem; }
-
-    .note-content {
-        white-space: pre-wrap; word-break: break-word; line-height: 1.55;
-        color: var(--text-main); font-size: 0.9rem;
+    .pbi-card-meta {
+        display: flex; flex-wrap: wrap; gap: 0.3rem; margin-top: 0.5rem; align-items: center;
     }
-    .note-edit textarea {
-        width: 100%; min-height: 100px; background: rgba(255,255,255,0.03);
-        border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; color: white;
-        padding: 0.5rem; font-family: inherit; font-size: 0.85rem; resize: vertical;
+    .pbi-label-chip {
+        display: inline-flex; align-items: center; padding: 0.12rem 0.5rem;
+        border-radius: 999px; font-size: 0.7rem; font-weight: 600;
+        color: white; line-height: 1.4;
     }
+    .pbi-card-due { font-size: 0.7rem; color: var(--text-muted); margin-left: auto; font-family: monospace; }
+    .pbi-card-due.overdue { color: #ef4444; }
 
-    .link-list { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 0.3rem; }
-    .link-list a { color: #06b6d4; text-decoration: none; font-size: 0.88rem; }
-    .link-list a:hover { text-decoration: underline; }
-    .link-list .del { background: none; border: none; color: var(--text-muted); cursor: pointer; opacity: 0; margin-left: auto; }
-    .link-list li:hover .del { opacity: 1; }
-    .link-list li { display: flex; align-items: center; gap: 0.5rem; padding: 0.25rem 0.3rem; border-radius: 6px; }
-    .link-list li:hover { background: rgba(255,255,255,0.03); }
+    .pbi-card-actions {
+        position: absolute; top: 0.45rem; right: 0.5rem; display: flex; gap: 0.2rem; opacity: 0;
+        transition: opacity 0.12s;
+    }
+    .pbi-card:hover .pbi-card-actions { opacity: 1; }
+    .pbi-card-actions button {
+        background: none; border: none; color: var(--text-muted); cursor: pointer;
+        padding: 0.15rem 0.35rem; border-radius: 4px; font-size: 0.75rem;
+    }
+    .pbi-card-actions button:hover { color: white; background: rgba(255,255,255,0.08); }
 
-    /* Modal */
-    .ws-modal-backdrop {
-        position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 999;
+    /* ── Modals ── */
+    .kb-modal-backdrop {
+        position: fixed; inset: 0; background: rgba(0,0,0,0.65); z-index: 999;
         display: none; align-items: center; justify-content: center;
     }
-    .ws-modal-backdrop.open { display: flex; }
-    .ws-modal {
+    .kb-modal-backdrop.open { display: flex; }
+    .kb-modal {
         background: #0f0f17; border: 1px solid rgba(255,255,255,0.1); border-radius: 14px;
-        padding: 1.5rem; min-width: 380px; max-width: 90vw; max-height: 85vh; overflow: auto;
+        padding: 1.5rem; min-width: 460px; max-width: 92vw; max-height: 90vh; overflow: auto;
     }
-    .ws-modal h2 { margin: 0 0 1rem 0; font-size: 1.1rem; }
-    .ws-modal label { display: block; color: var(--text-muted); font-size: 0.8rem; margin: 0.75rem 0 0.3rem; }
-    .ws-modal input, .ws-modal select, .ws-modal textarea {
+    .kb-modal h2 { margin: 0 0 1rem 0; font-size: 1.1rem; }
+    .kb-modal label { display: block; color: var(--text-muted); font-size: 0.8rem; margin: 0.85rem 0 0.3rem; }
+    .kb-modal input, .kb-modal select, .kb-modal textarea {
         width: 100%; padding: 0.55rem 0.7rem; background: rgba(255,255,255,0.04);
         border: 1px solid rgba(255,255,255,0.1); border-radius: 6px; color: white;
         font-family: inherit; font-size: 0.9rem;
     }
-    .ws-modal .modal-actions { display: flex; gap: 0.6rem; justify-content: flex-end; margin-top: 1.25rem; }
+    .kb-modal textarea { resize: vertical; min-height: 90px; }
+    .kb-modal .modal-actions { display: flex; gap: 0.6rem; justify-content: flex-end; margin-top: 1.25rem; }
 
-    .widget-type-grid {
-        display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.5rem;
+    .label-picker {
+        display: flex; flex-wrap: wrap; gap: 0.35rem; margin-top: 0.3rem;
     }
-    .widget-type-card {
-        padding: 0.85rem 0.5rem; border-radius: 8px; border: 1px solid rgba(255,255,255,0.1);
-        background: rgba(255,255,255,0.03); cursor: pointer; text-align: center; transition: 0.15s;
+    .label-picker .picker-chip {
+        cursor: pointer; opacity: 0.5; transition: opacity 0.12s;
     }
-    .widget-type-card:hover { border-color: rgba(109,40,217,0.5); background: rgba(109,40,217,0.1); }
-    .widget-type-card.selected { border-color: #6d28d9; background: rgba(109,40,217,0.15); }
-    .widget-type-card i { font-size: 1.25rem; color: #c4b5fd; }
-    .widget-type-card div { font-size: 0.75rem; margin-top: 0.3rem; color: var(--text-muted); }
+    .label-picker .picker-chip.on { opacity: 1; }
 
-    /* Sprint-specific banner */
-    .sprint-banner {
-        background: linear-gradient(135deg, rgba(109,40,217,0.15), rgba(6,182,212,0.1));
-        border: 1px solid rgba(109,40,217,0.3); border-radius: 12px; padding: 1rem 1.25rem;
-        margin-bottom: 1rem; display: flex; gap: 1.5rem; align-items: center; flex-wrap: wrap;
+    .label-row {
+        display: flex; align-items: center; gap: 0.6rem; padding: 0.5rem 0;
+        border-bottom: 1px solid rgba(255,255,255,0.04);
     }
-    .sprint-banner .goal { flex: 1; min-width: 200px; font-size: 0.9rem; }
-    .sprint-banner .dates { color: var(--text-muted); font-size: 0.82rem; font-family: monospace; }
-    .sprint-banner .stat { text-align: center; }
-    .sprint-banner .stat .n { font-size: 1.5rem; font-weight: 700; color: #06b6d4; line-height: 1; }
-    .sprint-banner .stat .l { font-size: 0.7rem; color: var(--text-muted); }
+    .label-row:last-child { border-bottom: none; }
+    .label-row .swatch {
+        width: 18px; height: 18px; border-radius: 4px; flex-shrink: 0;
+    }
+    .label-row input[type=text]  { flex: 1; padding: 0.35rem 0.5rem; }
+    .label-row input[type=color] { width: 40px; height: 32px; padding: 0; border: none; background: none; cursor: pointer; }
+    .label-row .del { background: none; border: none; color: #ef4444; cursor: pointer; }
 </style>
 
-<div class="ws-toolbar">
-    <h1><i class="fa-solid fa-table-columns" style="color:#c4b5fd; margin-right:0.5rem;"></i>My Workspace</h1>
-    <select id="boardSwitcher" class="ws-select" title="Switch board"></select>
-    <button id="editBoardBtn" class="ws-btn" title="Edit board"><i class="fa-solid fa-pen"></i></button>
-    <button id="addBoardBtn" class="ws-btn"><i class="fa-solid fa-folder-plus"></i> Board</button>
-    <button id="addWidgetBtn" class="ws-btn primary"><i class="fa-solid fa-plus"></i> Widget</button>
+<div class="kb-toolbar">
+    <h1><i class="fa-solid fa-table-list" style="color:#c4b5fd; margin-right:0.5rem;"></i>My Workspace</h1>
+    <input id="kbSearch" class="kb-input" type="text" placeholder="Ara... (başlık + açıklama)">
+    <label class="kb-toggle"><input type="checkbox" id="kbHideDone"> Done gizle</label>
+    <div id="kbPriorityChips" style="display:flex; gap:0.35rem;">
+        <span class="kb-filter-chip" data-pri="1" style="--chip-bg:rgba(239,68,68,0.18); color:#fca5a5;">P1</span>
+        <span class="kb-filter-chip" data-pri="2" style="--chip-bg:rgba(245,158,11,0.18); color:#fcd34d;">P2</span>
+        <span class="kb-filter-chip" data-pri="3" style="--chip-bg:rgba(100,116,139,0.18); color:#cbd5e1;">P3</span>
+    </div>
     <div class="grow"></div>
-    <span id="lastSaved" class="ws-board-meta"></span>
+    <button id="kbManageLabelsBtn" class="kb-btn"><i class="fa-solid fa-tags"></i> Etiketler</button>
+    <button id="kbNewPbiBtn" class="kb-btn primary"><i class="fa-solid fa-plus"></i> Yeni Kart</button>
 </div>
 
-<!-- Sprint banner — populated when board.kind == "Sprint" -->
-<div id="sprintBanner" class="sprint-banner" style="display:none;"></div>
+<div id="kbLabelFilter" style="display:flex; flex-wrap:wrap; gap:0.35rem; margin-bottom:1rem;"></div>
 
-<div class="grid-stack"></div>
-<div id="emptyState" class="ws-empty" style="display:none;">
-    Bu board boş — sağ üstten <strong>Widget</strong> ekle.
+<div class="kb-board">
+    <div class="kb-col" data-state="Backlog">
+        <div class="kb-col-header"><h3>📥 Backlog</h3><span class="kb-col-count">0</span></div>
+        <div class="kb-col-body" data-col-body></div>
+        <button class="kb-add-card" data-quick-add="Backlog">+ Hızlı ekle</button>
+    </div>
+    <div class="kb-col" data-state="Todo">
+        <div class="kb-col-header"><h3>📝 To Do</h3><span class="kb-col-count">0</span></div>
+        <div class="kb-col-body" data-col-body></div>
+        <button class="kb-add-card" data-quick-add="Todo">+ Hızlı ekle</button>
+    </div>
+    <div class="kb-col" data-state="Doing">
+        <div class="kb-col-header"><h3>⚙️ Doing</h3><span class="kb-col-count">0</span></div>
+        <div class="kb-col-body" data-col-body></div>
+        <button class="kb-add-card" data-quick-add="Doing">+ Hızlı ekle</button>
+    </div>
+    <div class="kb-col" data-state="Done">
+        <div class="kb-col-header"><h3>✅ Done</h3><span class="kb-col-count">0</span></div>
+        <div class="kb-col-body" data-col-body></div>
+        <button class="kb-add-card" data-quick-add="Done">+ Hızlı ekle</button>
+    </div>
 </div>
 
-<!-- ── Modals ───────────────────────────────────────────────── -->
-<div id="addWidgetModal" class="ws-modal-backdrop">
-    <div class="ws-modal">
-        <h2><i class="fa-solid fa-puzzle-piece"></i> Yeni Widget</h2>
-        <label>Tip</label>
-        <div id="widgetTypeGrid" class="widget-type-grid"></div>
-        <label>Başlık (opsiyonel)</label>
-        <input type="text" id="newWidgetTitle" placeholder="örn. Bu hafta">
+<!-- ── PBI modal (yeni + düzenle) ─────────────────────────────── -->
+<div id="pbiModal" class="kb-modal-backdrop">
+    <div class="kb-modal">
+        <h2 id="pbiModalTitle">Yeni Kart</h2>
+        <input type="hidden" id="pbiId">
+        <label>Başlık</label>
+        <input type="text" id="pbiTitle" placeholder="örn. Login redirect bug'ı düzelt" maxlength="300">
+        <label>Açıklama</label>
+        <textarea id="pbiDescription" placeholder="Detaylar, acceptance criteria..." maxlength="8000"></textarea>
+        <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:0.6rem;">
+            <div>
+                <label>Kolon</label>
+                <select id="pbiState">
+                    <option value="Backlog">📥 Backlog</option>
+                    <option value="Todo">📝 To Do</option>
+                    <option value="Doing">⚙️ Doing</option>
+                    <option value="Done">✅ Done</option>
+                </select>
+            </div>
+            <div>
+                <label>Öncelik</label>
+                <select id="pbiPriority">
+                    <option value="1">P1 — acil</option>
+                    <option value="2" selected>P2 — normal</option>
+                    <option value="3">P3 — sonra</option>
+                </select>
+            </div>
+            <div>
+                <label>Tarih (opsiyonel)</label>
+                <input type="date" id="pbiDueDate">
+            </div>
+        </div>
+        <label>Etiketler</label>
+        <div class="label-picker" id="pbiLabelPicker"></div>
         <div class="modal-actions">
-            <button class="ws-btn" data-action="cancel">Vazgeç</button>
-            <button class="ws-btn primary" id="confirmAddWidget">Ekle</button>
+            <button class="kb-btn danger" id="pbiDeleteBtn" style="display:none;"><i class="fa-solid fa-trash"></i> Sil</button>
+            <div style="flex:1"></div>
+            <button class="kb-btn" data-action="cancel">Vazgeç</button>
+            <button class="kb-btn primary" id="pbiSaveBtn">Kaydet</button>
         </div>
     </div>
 </div>
 
-<div id="addBoardModal" class="ws-modal-backdrop">
-    <div class="ws-modal">
-        <h2><i class="fa-solid fa-folder-plus"></i> Yeni Board</h2>
-        <label>Ad</label>
-        <input type="text" id="newBoardName" placeholder="örn. İş / Spor / Sprint #6">
-        <label>Tip</label>
-        <select id="newBoardKind">
-            <option value="Standard">Standard — uzun ömürlü alan</option>
-            <option value="Sprint">Sprint — zaman-kutulu, burndown'lı</option>
-        </select>
-        <div id="sprintFields" style="display:none;">
-            <label>Başlangıç</label>
-            <input type="datetime-local" id="newBoardStart">
-            <label>Bitiş</label>
-            <input type="datetime-local" id="newBoardEnd">
-            <label>Sprint hedefi</label>
-            <textarea id="newBoardGoal" rows="2" placeholder="Bu sprintte ne çıkacak..."></textarea>
+<!-- ── Etiketler yönetim modal ─────────────────────────────── -->
+<div id="labelsModal" class="kb-modal-backdrop">
+    <div class="kb-modal">
+        <h2><i class="fa-solid fa-tags"></i> Etiketleri Yönet</h2>
+        <div id="labelsList" style="margin-top:0.5rem;"></div>
+        <div style="margin-top:1rem; border-top:1px solid rgba(255,255,255,0.05); padding-top:1rem;">
+            <label>Yeni etiket</label>
+            <div class="label-row" style="border:none; padding:0;">
+                <input type="color" id="newLabelColor" value="#3b82f6">
+                <input type="text" id="newLabelName" placeholder="İsim (örn. Backend)" maxlength="40">
+                <button class="kb-btn primary" id="addLabelBtn">Ekle</button>
+            </div>
         </div>
         <div class="modal-actions">
-            <button class="ws-btn" data-action="cancel">Vazgeç</button>
-            <button class="ws-btn primary" id="confirmAddBoard">Oluştur</button>
-        </div>
-    </div>
-</div>
-
-<div id="editBoardModal" class="ws-modal-backdrop">
-    <div class="ws-modal">
-        <h2><i class="fa-solid fa-pen"></i> Board Düzenle</h2>
-        <label>Ad</label>
-        <input type="text" id="editBoardName">
-        <div id="editSprintFields" style="display:none;">
-            <label>Başlangıç</label>
-            <input type="datetime-local" id="editBoardStart">
-            <label>Bitiş</label>
-            <input type="datetime-local" id="editBoardEnd">
-            <label>Sprint hedefi</label>
-            <textarea id="editBoardGoal" rows="2"></textarea>
-            <label>Retro notları</label>
-            <textarea id="editBoardRetro" rows="4" placeholder="Sprint sonu öğrenilenler..."></textarea>
-        </div>
-        <div class="modal-actions">
-            <button class="ws-btn danger" id="archiveBoardBtn"><i class="fa-solid fa-box-archive"></i> Arşivle</button>
-            <div class="grow" style="flex:1"></div>
-            <button class="ws-btn" data-action="cancel">Vazgeç</button>
-            <button class="ws-btn primary" id="confirmEditBoard">Kaydet</button>
+            <button class="kb-btn" data-action="cancel">Kapat</button>
         </div>
     </div>
 </div>
 
 <script>
-    // Initial board id passed from the controller — drives the first fetch. Subsequent board
-    // switches mutate this and call refresh().
-    let currentBoardId = @initialBoardId;
-    let currentBoard = null;
-    let grid = null;
-    const charts = new Map(); // widgetId → Chart.js instance (destroyed on widget removal/rerender)
-
-    // ── Type registry ──────────────────────────────────────────────────
-    // Each widget type knows three things:
-    //   meta: how it shows up in the "Add Widget" picker + a sensible default grid size
-    //   defaultConfig(): factory for the initial ConfigJson
-    //   render(widget, contentEl): paints the body of a widget into a Gridstack item
-    //
-    // Adding a new widget type = adding one entry to this object + (optionally) a Razor partial.
-    // F2 chart types and F3 burndown register here too.
-    const WIDGET_TYPES = {
-        Checklist: { meta: { label: 'Checklist',  icon: 'fa-list-check',         w: 4, h: 4 }, defaultConfig: () => null, render: renderChecklist },
-        Counter:   { meta: { label: 'Sayaç',      icon: 'fa-hashtag',            w: 3, h: 3 }, defaultConfig: () => JSON.stringify({ value: 0, label: 'Etiket' }), render: renderCounter },
-        Countdown: { meta: { label: 'Geri Sayım', icon: 'fa-hourglass-half',     w: 3, h: 3 }, defaultConfig: () => JSON.stringify({ targetUtc: new Date(Date.now() + 7*86400000).toISOString(), label: 'Hedef' }), render: renderCountdown },
-        Progress:  { meta: { label: 'Progress',   icon: 'fa-bars-progress',      w: 3, h: 3 }, defaultConfig: () => JSON.stringify({ percentage: 0 }), render: renderProgress },
-        Note:      { meta: { label: 'Not',        icon: 'fa-note-sticky',        w: 4, h: 4 }, defaultConfig: () => JSON.stringify({ content: '' }), render: renderNote },
-        Link:      { meta: { label: 'Link',       icon: 'fa-link',               w: 3, h: 4 }, defaultConfig: () => null, render: renderLinks },
-
-        // F2 chart family
-        Line:      { meta: { label: 'Line',       icon: 'fa-chart-line',         w: 6, h: 4 }, defaultConfig: () => JSON.stringify({ days: 30, sourceChecklistWidgetId: null }), render: renderLine },
-        Bar:       { meta: { label: 'Bar',        icon: 'fa-chart-column',       w: 6, h: 4 }, defaultConfig: () => JSON.stringify({ days: 30 }), render: renderBar },
-        Heatmap:   { meta: { label: 'Heatmap',    icon: 'fa-table-cells',        w: 8, h: 3 }, defaultConfig: () => JSON.stringify({ weeks: 26 }), render: renderHeatmap },
-        Donut:     { meta: { label: 'Donut',      icon: 'fa-chart-pie',          w: 4, h: 4 }, defaultConfig: () => JSON.stringify({ segments: [{label:'A',value:1},{label:'B',value:1}] }), render: renderDonut },
-        Kpi:       { meta: { label: 'KPI',        icon: 'fa-gauge-high',         w: 3, h: 3 }, defaultConfig: () => JSON.stringify({ label: 'Metric', target: null, sourceChecklistWidgetId: null }), render: renderKpi },
-        Streak:    { meta: { label: 'Streak',     icon: 'fa-fire',               w: 3, h: 3 }, defaultConfig: () => JSON.stringify({ label: 'Üst üste gün', sourceChecklistWidgetId: null }), render: renderStreak },
-
-        // F3 sprint widget
-        Burndown:  { meta: { label: 'Burndown',   icon: 'fa-arrow-trend-down',   w: 8, h: 4 }, defaultConfig: () => JSON.stringify({ sourceChecklistWidgetId: null }), render: renderBurndown }
+    // ── Application state ──────────────────────────────────────────
+    let pbis = [];
+    let labels = [];
+    const sortables = []; // per-column Sortable instances
+    const filter = {
+        search: '',
+        labelIds: new Set(),
+        priorities: new Set(),
+        hideDone: false
     };
 
-    // ── Boot ───────────────────────────────────────────────────────────
     document.addEventListener('DOMContentLoaded', async () => {
-        initGrid();
         wireToolbar();
         wireModals();
-        await loadBoardList();
         await refresh();
     });
 
-    function initGrid() {
-        grid = GridStack.init({
-            cellHeight: 70,
-            margin: 8,
-            float: false,
-            handle: '.widget-header',
-            resizable: { handles: 'se' },
-            column: 12,
-            disableOneColumnMode: false
-        });
-
-        // Debounce layout saves — Gridstack fires 'change' on every drag pixel; we batch the
-        // final positions ~400ms after the last move so we don't hammer the API.
-        let saveTimer = null;
-        grid.on('change', (_, changedItems) => {
-            if (!changedItems || changedItems.length === 0) return;
-            clearTimeout(saveTimer);
-            saveTimer = setTimeout(() => persistLayout(changedItems), 400);
-        });
+    async function refresh() {
+        const snap = await fetch('/api/workspace/snapshot').then(r => r.ok ? r.json() : null);
+        if (!snap) return;
+        pbis = snap.pbis || [];
+        labels = snap.labels || [];
+        renderLabelFilter();
+        renderBoard();
     }
 
+    // ── Toolbar wiring ─────────────────────────────────────────────
     function wireToolbar() {
-        document.getElementById('boardSwitcher').addEventListener('change', async (e) => {
-            currentBoardId = parseInt(e.target.value, 10);
-            await refresh();
+        document.getElementById('kbSearch').addEventListener('input', (e) => {
+            filter.search = e.target.value.toLowerCase().trim();
+            renderBoard();
         });
-        document.getElementById('addBoardBtn').addEventListener('click', () => openAddBoardModal());
-        document.getElementById('editBoardBtn').addEventListener('click', () => openEditBoardModal());
-        document.getElementById('addWidgetBtn').addEventListener('click', () => openAddWidgetModal());
+        document.getElementById('kbHideDone').addEventListener('change', (e) => {
+            filter.hideDone = e.target.checked;
+            renderBoard();
+        });
+        document.querySelectorAll('#kbPriorityChips .kb-filter-chip').forEach(chip => {
+            chip.addEventListener('click', () => {
+                const p = parseInt(chip.dataset.pri, 10);
+                if (filter.priorities.has(p)) filter.priorities.delete(p);
+                else filter.priorities.add(p);
+                chip.classList.toggle('on');
+                renderBoard();
+            });
+        });
+        document.getElementById('kbNewPbiBtn').addEventListener('click', () => openPbiModal(null));
+        document.getElementById('kbManageLabelsBtn').addEventListener('click', () => openLabelsModal());
+
+        // Quick-add buttons (one per column) — minimal: prompt for title, defaults to that column
+        document.querySelectorAll('[data-quick-add]').forEach(btn => {
+            btn.addEventListener('click', async () => {
+                const state = btn.dataset.quickAdd;
+                const title = prompt(`${state} — yeni kart başlığı:`);
+                if (!title || !title.trim()) return;
+                await api('POST', '/api/workspace/pbis', { title: title.trim(), state, priority: 2 });
+                await refresh();
+            });
+        });
     }
 
     function wireModals() {
-        document.querySelectorAll('.ws-modal-backdrop').forEach(bd => {
+        document.querySelectorAll('.kb-modal-backdrop').forEach(bd => {
             bd.addEventListener('click', (e) => { if (e.target === bd) closeAllModals(); });
             bd.querySelectorAll('[data-action="cancel"]').forEach(b => b.addEventListener('click', closeAllModals));
         });
-        document.getElementById('newBoardKind').addEventListener('change', (e) => {
-            document.getElementById('sprintFields').style.display = e.target.value === 'Sprint' ? 'block' : 'none';
-        });
-        document.getElementById('confirmAddBoard').addEventListener('click', submitAddBoard);
-        document.getElementById('confirmEditBoard').addEventListener('click', submitEditBoard);
-        document.getElementById('archiveBoardBtn').addEventListener('click', submitArchiveBoard);
-        document.getElementById('confirmAddWidget').addEventListener('click', submitAddWidget);
+        document.getElementById('pbiSaveBtn').addEventListener('click', submitPbi);
+        document.getElementById('pbiDeleteBtn').addEventListener('click', deletePbi);
+        document.getElementById('addLabelBtn').addEventListener('click', submitNewLabel);
+    }
 
-        // Build the widget type picker grid once
-        const grid = document.getElementById('widgetTypeGrid');
-        for (const [type, def] of Object.entries(WIDGET_TYPES)) {
-            const card = document.createElement('div');
-            card.className = 'widget-type-card';
-            card.dataset.type = type;
-            card.innerHTML = `<i class="fa-solid ${def.meta.icon}"></i><div>${def.meta.label}</div>`;
-            card.addEventListener('click', () => {
-                grid.querySelectorAll('.widget-type-card').forEach(c => c.classList.remove('selected'));
-                card.classList.add('selected');
+    // ── Render: label filter row ───────────────────────────────────
+    function renderLabelFilter() {
+        const wrap = document.getElementById('kbLabelFilter');
+        wrap.innerHTML = '';
+        for (const l of labels) {
+            const chip = document.createElement('span');
+            chip.className = 'kb-filter-chip' + (filter.labelIds.has(l.id) ? ' on' : '');
+            chip.style.setProperty('--chip-bg', hexA(l.color, 0.22));
+            chip.style.color = l.color;
+            chip.textContent = l.name;
+            chip.addEventListener('click', () => {
+                if (filter.labelIds.has(l.id)) filter.labelIds.delete(l.id);
+                else filter.labelIds.add(l.id);
+                renderLabelFilter();
+                renderBoard();
             });
-            grid.appendChild(card);
+            wrap.appendChild(chip);
         }
     }
 
-    // ── Data loading ──────────────────────────────────────────────────
-    async function loadBoardList() {
-        const res = await fetch('/api/workspace/boards');
-        if (!res.ok) return;
-        const boards = await res.json();
-        const sel = document.getElementById('boardSwitcher');
-        sel.innerHTML = '';
-        for (const b of boards) {
-            const opt = document.createElement('option');
-            opt.value = b.id;
-            const prefix = b.kind === 'Sprint' ? '🏁 ' : '';
-            opt.textContent = `${prefix}${b.name}`;
-            if (b.id === currentBoardId) opt.selected = true;
-            sel.appendChild(opt);
-        }
-    }
+    // ── Render: board (4 columns) ──────────────────────────────────
+    function renderBoard() {
+        const visible = pbis.filter(matchesFilter);
+        const byState = { Backlog: [], Todo: [], Doing: [], Done: [] };
+        for (const p of visible) (byState[p.state] || (byState[p.state] = [])).push(p);
 
-    async function refresh() {
-        const res = await fetch(`/api/workspace/boards/${currentBoardId}`);
-        if (!res.ok) return;
-        currentBoard = await res.json();
-        renderSprintBanner(currentBoard);
-        renderAllWidgets(currentBoard.widgets);
-    }
+        // Sort each column by sortOrder (server already returns sorted, but filter may interleave)
+        for (const k of Object.keys(byState)) byState[k].sort((a, b) => a.sortOrder - b.sortOrder);
 
-    // ── Rendering ─────────────────────────────────────────────────────
-    function renderSprintBanner(board) {
-        const banner = document.getElementById('sprintBanner');
-        if (board.kind !== 'Sprint') { banner.style.display = 'none'; return; }
-
-        const start = board.startUtc ? new Date(board.startUtc) : null;
-        const end   = board.endUtc   ? new Date(board.endUtc)   : null;
-        const today = new Date();
-        const daysLeft = end ? Math.max(0, Math.ceil((end - today) / 86400000)) : null;
-        const daysTotal = start && end ? Math.max(1, Math.ceil((end - start) / 86400000)) : null;
-
-        banner.style.display = 'flex';
-        banner.innerHTML = `
-            <div class="goal"><strong>🎯 ${escapeHtml(board.goalText || 'Hedef tanımlı değil')}</strong></div>
-            <div class="dates">${start ? start.toISOString().slice(0,10) : '?'} → ${end ? end.toISOString().slice(0,10) : '?'}</div>
-            ${daysLeft != null ? `<div class="stat"><div class="n">${daysLeft}</div><div class="l">gün kaldı</div></div>` : ''}
-            ${daysTotal != null ? `<div class="stat"><div class="n">${daysTotal}</div><div class="l">toplam gün</div></div>` : ''}
-        `;
-    }
-
-    function renderAllWidgets(widgets) {
-        // Destroy any Chart.js instances tied to widgets we're about to wipe — leaking chart
-        // instances across re-renders pegs CPU and the canvas stops updating.
-        for (const c of charts.values()) c.destroy();
-        charts.clear();
-
-        // removeAll(true) detaches the DOM elements too. Without this, the old .grid-stack-item
-        // nodes linger from the previous render — gridstack stops tracking them but they remain
-        // visible behind the new ones, and after a couple of refreshes the visible state diverges
-        // from server state. removeAll() default is true; passing it explicitly to document intent.
-        grid.removeAll(true);
-        if (!widgets || widgets.length === 0) {
-            document.getElementById('emptyState').style.display = 'block';
-            return;
-        }
-        document.getElementById('emptyState').style.display = 'none';
-
-        for (const w of widgets) addWidgetToGrid(w);
-    }
-
-    function addWidgetToGrid(w) {
-        const def = WIDGET_TYPES[w.type];
-        if (!def) { console.warn('Unknown widget type', w.type); return; }
-
-        const item = document.createElement('div');
-        item.classList.add('grid-stack-item');
-        item.dataset.widgetId = w.id;
-        item.setAttribute('gs-x', w.gridX);
-        item.setAttribute('gs-y', w.gridY);
-        item.setAttribute('gs-w', w.gridW);
-        item.setAttribute('gs-h', w.gridH);
-
-        const content = document.createElement('div');
-        content.className = 'grid-stack-item-content';
-        content.innerHTML = `
-            <div class="widget-header">
-                <h4>${escapeHtml(w.title || def.meta.label)}</h4>
-                <div class="widget-actions">
-                    <button data-act="settings" title="Ayarlar"><i class="fa-solid fa-gear"></i></button>
-                    <button data-act="delete" title="Sil"><i class="fa-solid fa-trash"></i></button>
-                </div>
-            </div>
-            <div class="widget-body"></div>`;
-        item.appendChild(content);
-        // Gridstack 10.x: makeWidget() expects the element to ALREADY be inside grid.el. If you
-        // skip the appendChild it silently no-ops — the element exists in memory but never paints,
-        // which looks exactly like "I added a widget and nothing appeared". Either we appendChild
-        // first then makeWidget, or use addWidget(item) which does both. Doing it explicitly keeps
-        // the two steps visible.
-        grid.el.appendChild(item);
-        grid.makeWidget(item);
-
-        // Wire widget-level actions
-        content.querySelector('[data-act="delete"]').addEventListener('click', () => deleteWidget(w.id));
-        content.querySelector('[data-act="settings"]').addEventListener('click', () => openWidgetSettings(w));
-
-        // Render the body via the type-specific renderer
-        const body = content.querySelector('.widget-body');
-        try { def.render(w, body); } catch (err) { body.textContent = 'Render hatası: ' + err.message; }
-    }
-
-    // ── Widget renderers ──────────────────────────────────────────────
-    function renderChecklist(w, el) {
-        const items = w.items || [];
-        const done = items.filter(i => i.isDone).length;
-        const pct = items.length ? Math.round(done / items.length * 100) : 0;
-        el.innerHTML = `
-            <div class="checklist-input">
-                <input type="text" placeholder="Yeni madde..." maxlength="500">
-                <button>Ekle</button>
-            </div>
-            <ul class="checklist-list">
-                ${items.map(i => `
-                    <li data-id="${i.id}">
-                        <input type="checkbox" ${i.isDone ? 'checked' : ''}>
-                        <span class="${i.isDone ? 'done' : ''}">${escapeHtml(i.label)}</span>
-                        <button class="del" title="Sil"><i class="fa-solid fa-xmark"></i></button>
-                    </li>`).join('')}
-            </ul>
-            <div class="checklist-progress">${done}/${items.length} tamamlandı · ${pct}%</div>`;
-
-        const input = el.querySelector('input[type="text"]');
-        const addBtn = el.querySelector('button');
-        const addItem = async () => {
-            const label = input.value.trim();
-            if (!label) return;
-            input.value = '';
-            await api('POST', `/api/workspace/widgets/${w.id}/items`, { label });
-            await refresh();
-        };
-        addBtn.addEventListener('click', addItem);
-        input.addEventListener('keydown', (e) => { if (e.key === 'Enter') addItem(); });
-
-        el.querySelectorAll('.checklist-list li').forEach(li => {
-            const id = parseInt(li.dataset.id, 10);
-            li.querySelector('input[type=checkbox]').addEventListener('change', async (e) => {
-                await api('PATCH', `/api/workspace/widgets/${w.id}/items/${id}`, { isDone: e.target.checked });
-                await refresh();
-            });
-            li.querySelector('.del').addEventListener('click', async () => {
-                if (!confirm('Sil?')) return;
-                await api('DELETE', `/api/workspace/widgets/${w.id}/items/${id}`);
-                await refresh();
-            });
+        document.querySelectorAll('.kb-col').forEach(col => {
+            const state = col.dataset.state;
+            const body  = col.querySelector('[data-col-body]');
+            const list  = byState[state] || [];
+            col.querySelector('.kb-col-count').textContent = list.length;
+            body.innerHTML = '';
+            for (const p of list) body.appendChild(renderCard(p));
         });
+
+        wireSortables();
     }
 
-    function renderCounter(w, el) {
-        const cfg = safeJson(w.configJson) || { value: 0, label: '' };
-        el.innerHTML = `
-            <div class="counter-value">${cfg.value ?? 0}</div>
-            <div class="counter-label">${escapeHtml(cfg.label || '')}</div>
-            <div class="counter-controls">
-                <button data-op="-1">−1</button>
-                <button data-op="-5">−5</button>
-                <button data-op="+1">+1</button>
-                <button data-op="+5">+5</button>
-                <button data-op="reset">Sıfırla</button>
-            </div>`;
-        el.querySelectorAll('button').forEach(btn => {
-            btn.addEventListener('click', async () => {
-                const op = btn.dataset.op;
-                const next = op === 'reset' ? 0 : (parseFloat(cfg.value) || 0) + parseFloat(op);
-                cfg.value = next;
-                await api('PATCH', `/api/workspace/widgets/${w.id}`, { configJson: JSON.stringify(cfg) });
-                w.configJson = JSON.stringify(cfg);
-                renderCounter(w, el);
-            });
-        });
-    }
-
-    function renderCountdown(w, el) {
-        const cfg = safeJson(w.configJson) || {};
-        const target = cfg.targetUtc ? new Date(cfg.targetUtc) : null;
-        const now = new Date();
-        const days = target ? Math.ceil((target - now) / 86400000) : null;
-        const expired = days != null && days <= 0;
-        el.innerHTML = `
-            <div class="countdown-target">${escapeHtml(cfg.label || 'Hedef')}: ${target ? target.toISOString().slice(0,10) : '?'}</div>
-            <div class="countdown-days ${expired ? 'countdown-expired' : ''}">
-                ${days == null ? '—' : (expired ? 'Tarih geçti' : `${days} gün`)}
-            </div>`;
-    }
-
-    function renderProgress(w, el) {
-        const cfg = safeJson(w.configJson) || { percentage: 0 };
-
-        // If linked to a checklist, compute the % live from that widget's items rather than the
-        // stored value. Keeps the bar honest without a recurring background job.
-        let pct = clamp(parseFloat(cfg.percentage) || 0, 0, 100);
-        if (cfg.linkedChecklistWidgetId) {
-            const src = currentBoard?.widgets?.find(x => x.id === cfg.linkedChecklistWidgetId && x.type === 'Checklist');
-            if (src && src.items?.length) {
-                const done = src.items.filter(i => i.isDone).length;
-                pct = Math.round(done / src.items.length * 100);
-            }
+    function matchesFilter(p) {
+        if (filter.hideDone && p.state === 'Done') return false;
+        if (filter.priorities.size && !filter.priorities.has(p.priority)) return false;
+        if (filter.labelIds.size) {
+            // Card must carry ALL selected labels (AND semantics — usually what you want for a tag filter)
+            for (const lid of filter.labelIds) if (!p.labelIds.includes(lid)) return false;
         }
-        el.innerHTML = `
-            <div class="progress-track"><div class="progress-fill" style="width:${pct}%"></div></div>
-            <div class="progress-meta"><span>${pct}%</span><span>${cfg.linkedChecklistWidgetId ? '🔗 checklist bağlı' : 'manuel'}</span></div>
-            ${!cfg.linkedChecklistWidgetId ? `
-                <input type="range" min="0" max="100" value="${pct}" style="width:100%;margin-top:0.5rem;">
-            ` : ''}`;
-        const slider = el.querySelector('input[type=range]');
-        if (slider) {
-            slider.addEventListener('change', async () => {
-                cfg.percentage = parseInt(slider.value, 10);
-                await api('PATCH', `/api/workspace/widgets/${w.id}`, { configJson: JSON.stringify(cfg) });
-                w.configJson = JSON.stringify(cfg);
-                renderProgress(w, el);
-            });
+        if (filter.search) {
+            const hay = (p.title + ' ' + (p.description || '')).toLowerCase();
+            if (!hay.includes(filter.search)) return false;
         }
+        return true;
     }
 
-    function renderNote(w, el) {
-        const cfg = safeJson(w.configJson) || { content: '' };
-        el.innerHTML = `
-            <div class="note-edit">
-                <textarea placeholder="Notunu yaz...">${escapeHtml(cfg.content || '')}</textarea>
-            </div>`;
-        const ta = el.querySelector('textarea');
-        let timer = null;
-        ta.addEventListener('input', () => {
-            clearTimeout(timer);
-            timer = setTimeout(async () => {
-                cfg.content = ta.value;
-                await api('PATCH', `/api/workspace/widgets/${w.id}`, { configJson: JSON.stringify(cfg) });
-                w.configJson = JSON.stringify(cfg);
-                stamp('Kaydedildi');
-            }, 600);
-        });
-    }
+    function renderCard(p) {
+        const card = document.createElement('div');
+        card.className = `pbi-card p${p.priority}` + (p.state === 'Done' ? ' done' : '');
+        card.dataset.id = p.id;
 
-    function renderLinks(w, el) {
-        const items = w.items || [];
-        el.innerHTML = `
-            <div class="checklist-input">
-                <input type="text" placeholder="Etiket" maxlength="200" id="lbl-${w.id}" style="flex:0 0 35%;">
-                <input type="text" placeholder="https://..." maxlength="2000" id="url-${w.id}">
-                <button>Ekle</button>
-            </div>
-            <ul class="link-list">
-                ${items.map(i => `
-                    <li data-id="${i.id}">
-                        <a href="${escapeAttr(i.value || '#')}" target="_blank" rel="noopener noreferrer">${escapeHtml(i.label)}</a>
-                        <button class="del"><i class="fa-solid fa-xmark"></i></button>
-                    </li>`).join('')}
-            </ul>`;
-        const labelInput = el.querySelector(`#lbl-${w.id}`);
-        const urlInput   = el.querySelector(`#url-${w.id}`);
-        el.querySelector('button').addEventListener('click', async () => {
-            const label = labelInput.value.trim();
-            const value = urlInput.value.trim();
-            if (!label || !value) return;
-            await api('POST', `/api/workspace/widgets/${w.id}/items`, { label, value });
-            await refresh();
-        });
-        el.querySelectorAll('.link-list .del').forEach(b => {
-            b.addEventListener('click', async () => {
-                const li = b.closest('li');
-                const id = parseInt(li.dataset.id, 10);
-                if (!confirm('Sil?')) return;
-                await api('DELETE', `/api/workspace/widgets/${w.id}/items/${id}`);
-                await refresh();
-            });
-        });
-    }
-
-    // ── Chart widget renderers (F2 + F3) ───────────────────────────────
-    // All share the same data path: fetch /api/workspace/widgets/{id}/metrics and
-    // hand the points to Chart.js. Streak/Burndown reduce the same data differently.
-    async function fetchMetrics(widgetId, fromUtc) {
-        const params = fromUtc ? `?fromUtc=${encodeURIComponent(fromUtc.toISOString())}` : '';
-        const res = await fetch(`/api/workspace/widgets/${widgetId}/metrics${params}`);
-        return res.ok ? await res.json() : [];
-    }
-
-    async function renderLine(w, el) {
-        const cfg = safeJson(w.configJson) || { days: 30 };
-        const since = new Date(Date.now() - (cfg.days || 30) * 86400000);
-        const data = await fetchMetrics(w.id, since);
-        el.innerHTML = `<canvas></canvas><div class="counter-label" style="margin-top:0.4rem;">${data.length} kayıt — son ${cfg.days || 30} gün</div>`;
-        const ctx = el.querySelector('canvas');
-        const grouped = groupByDay(data);
-        const chart = new Chart(ctx, {
-            type: 'line',
-            data: {
-                labels: grouped.map(p => p.day),
-                datasets: [{ data: grouped.map(p => p.sum), borderColor: '#06b6d4', backgroundColor: 'rgba(6,182,212,0.15)', fill: true, tension: 0.3, pointRadius: 2 }]
-            },
-            options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { x: { ticks: { color: '#888' } }, y: { ticks: { color: '#888' }, beginAtZero: true } } }
-        });
-        charts.set(w.id, chart);
-    }
-
-    async function renderBar(w, el) {
-        const cfg = safeJson(w.configJson) || { days: 30 };
-        const since = new Date(Date.now() - (cfg.days || 30) * 86400000);
-        const data = await fetchMetrics(w.id, since);
-        el.innerHTML = `<canvas></canvas>`;
-        const grouped = groupByDay(data);
-        const chart = new Chart(el.querySelector('canvas'), {
-            type: 'bar',
-            data: { labels: grouped.map(p => p.day), datasets: [{ data: grouped.map(p => p.sum), backgroundColor: '#6d28d9' }] },
-            options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { x: { ticks: { color: '#888' } }, y: { ticks: { color: '#888' }, beginAtZero: true } } }
-        });
-        charts.set(w.id, chart);
-    }
-
-    async function renderHeatmap(w, el) {
-        const cfg = safeJson(w.configJson) || { weeks: 26 };
-        const weeks = cfg.weeks || 26;
-        const since = new Date(Date.now() - weeks * 7 * 86400000);
-        const data = await fetchMetrics(w.id, since);
-
-        // Bucket metric entries by YYYY-MM-DD; the heatmap shows per-day intensity in a
-        // 7×weeks grid (rows = weekday, columns = ISO week).
-        const byDay = new Map();
-        for (const p of data) {
-            const k = p.recordedAtUtc.slice(0,10);
-            byDay.set(k, (byDay.get(k) || 0) + p.value);
-        }
-        const max = Math.max(1, ...byDay.values());
-        let html = '<div style="display:grid;grid-template-rows:repeat(7,1fr);grid-auto-flow:column;gap:3px;font-size:0;">';
-        const start = new Date(Date.now() - weeks * 7 * 86400000);
-        start.setHours(0,0,0,0);
-        for (let d = 0; d < weeks * 7; d++) {
-            const date = new Date(start.getTime() + d * 86400000);
-            const k = date.toISOString().slice(0,10);
-            const v = byDay.get(k) || 0;
-            const alpha = v === 0 ? 0.05 : 0.2 + 0.8 * (v / max);
-            html += `<div title="${k}: ${v}" style="width:12px;height:12px;border-radius:2px;background:rgba(6,182,212,${alpha});"></div>`;
-        }
-        html += '</div>';
-        const total = Array.from(byDay.values()).reduce((a, b) => a + b, 0);
-        el.innerHTML = html + `<div class="counter-label" style="margin-top:0.5rem;">${total} olay · son ${weeks} hafta</div>`;
-    }
-
-    async function renderDonut(w, el) {
-        const cfg = safeJson(w.configJson) || { segments: [] };
-        el.innerHTML = `<canvas></canvas>`;
-        const chart = new Chart(el.querySelector('canvas'), {
-            type: 'doughnut',
-            data: { labels: cfg.segments.map(s => s.label), datasets: [{ data: cfg.segments.map(s => s.value), backgroundColor: ['#6d28d9','#06b6d4','#ec4899','#f59e0b','#22c55e','#a855f7'] }] },
-            options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom', labels: { color: '#888', boxWidth: 10 } } }, cutout: '60%' }
-        });
-        charts.set(w.id, chart);
-    }
-
-    async function renderKpi(w, el) {
-        const cfg = safeJson(w.configJson) || { label: '' };
-        const since = new Date(Date.now() - 30 * 86400000);
-        const data = await fetchMetrics(w.id, since);
-        const todayKey = new Date().toISOString().slice(0,10);
-        const yesterdayKey = new Date(Date.now() - 86400000).toISOString().slice(0,10);
-        const today = data.filter(p => p.recordedAtUtc.slice(0,10) === todayKey).reduce((a, b) => a + b.value, 0);
-        const yesterday = data.filter(p => p.recordedAtUtc.slice(0,10) === yesterdayKey).reduce((a, b) => a + b.value, 0);
-        const delta = today - yesterday;
-        const arrow = delta > 0 ? '▲' : delta < 0 ? '▼' : '·';
-        const color = delta > 0 ? '#22c55e' : delta < 0 ? '#ef4444' : '#888';
-        el.innerHTML = `
-            <div class="counter-value">${today.toFixed(0)}</div>
-            <div class="counter-label">${escapeHtml(cfg.label || 'KPI')}</div>
-            <div style="margin-top:0.4rem;font-size:0.8rem;color:${color};">${arrow} ${Math.abs(delta).toFixed(0)} dün</div>`;
-    }
-
-    async function renderStreak(w, el) {
-        const cfg = safeJson(w.configJson) || { label: '' };
-        const since = new Date(Date.now() - 365 * 86400000);
-        const data = await fetchMetrics(w.id, since);
-        const days = new Set(data.map(p => p.recordedAtUtc.slice(0,10)));
-        // Streak = consecutive days ending today (or yesterday if today missing yet)
-        let streak = 0;
-        let cursor = new Date();
-        cursor.setHours(0,0,0,0);
-        while (true) {
-            const k = cursor.toISOString().slice(0,10);
-            if (days.has(k)) { streak++; cursor.setTime(cursor.getTime() - 86400000); }
-            else if (streak === 0 && k === new Date().toISOString().slice(0,10)) { cursor.setTime(cursor.getTime() - 86400000); }
-            else break;
-        }
-        el.innerHTML = `
-            <div style="display:flex;align-items:baseline;gap:0.5rem;">
-                <div class="counter-value" style="background:linear-gradient(135deg,#f59e0b,#ef4444);-webkit-background-clip:text;-webkit-text-fill-color:transparent;">${streak}</div>
-                <div style="font-size:1.2rem;">🔥</div>
-            </div>
-            <div class="counter-label">${escapeHtml(cfg.label || 'gün üst üste')}</div>`;
-    }
-
-    async function renderBurndown(w, el) {
-        // Sprint burndown: ideal line from total items at start → 0 at end vs. actual remaining.
-        // Uses the parent board's sprint dates + the "Sprint Backlog" checklist (or the only
-        // checklist on the board) as the source. Falls back to a neutral message if no sprint.
-        if (currentBoard?.kind !== 'Sprint' || !currentBoard.startUtc || !currentBoard.endUtc) {
-            el.innerHTML = `<div class="counter-label">Burndown sadece Sprint board'larında çalışır.</div>`;
-            return;
-        }
-        const checklist = currentBoard.widgets.find(x => x.type === 'Checklist');
-        if (!checklist) {
-            el.innerHTML = `<div class="counter-label">Burndown için bir Checklist widget'ı bekleniyor.</div>`;
-            return;
-        }
-        const total = checklist.items.length;
-        const start = new Date(currentBoard.startUtc); start.setHours(0,0,0,0);
-        const end   = new Date(currentBoard.endUtc);   end.setHours(0,0,0,0);
+        const due = p.dueDateUtc ? new Date(p.dueDateUtc) : null;
         const today = new Date(); today.setHours(0,0,0,0);
-        const totalDays = Math.max(1, Math.round((end - start) / 86400000));
+        const overdue = due && due < today && p.state !== 'Done';
+        if (overdue) card.classList.add('overdue');
 
-        // Build day labels start → end
-        const labels = [];
-        const ideal = [];
-        const actual = [];
-        for (let i = 0; i <= totalDays; i++) {
-            const d = new Date(start.getTime() + i * 86400000);
-            const k = d.toISOString().slice(0,10);
-            labels.push(k.slice(5));
-            ideal.push(+(total * (1 - i / totalDays)).toFixed(1));
-            if (d <= today) {
-                const remaining = checklist.items.filter(it => !it.isDone || (it.doneAtUtc && new Date(it.doneAtUtc) > d)).length;
-                actual.push(remaining);
-            } else {
-                actual.push(null);
-            }
-        }
-        el.innerHTML = `<canvas></canvas>`;
-        const chart = new Chart(el.querySelector('canvas'), {
-            type: 'line',
-            data: { labels, datasets: [
-                { label: 'İdeal',  data: ideal,  borderColor: 'rgba(168,85,247,0.6)', borderDash: [6,4], pointRadius: 0, tension: 0 },
-                { label: 'Gerçek', data: actual, borderColor: '#06b6d4', backgroundColor: 'rgba(6,182,212,0.1)', fill: true, tension: 0.2, pointRadius: 3, spanGaps: false }
-            ]},
-            options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { labels: { color: '#aaa', boxWidth: 10 } } }, scales: { x: { ticks: { color: '#888', maxRotation: 0, autoSkip: true } }, y: { ticks: { color: '#888' }, beginAtZero: true } } }
+        const labelChips = p.labelIds
+            .map(id => labels.find(l => l.id === id))
+            .filter(Boolean)
+            .map(l => `<span class="pbi-label-chip" style="background:${l.color}">${escapeHtml(l.name)}</span>`)
+            .join('');
+
+        card.innerHTML = `
+            <div class="pbi-card-actions">
+                <button data-act="edit" title="Düzenle"><i class="fa-solid fa-pen"></i></button>
+            </div>
+            <p class="pbi-card-title">${escapeHtml(p.title)}</p>
+            ${p.description ? `<p class="pbi-card-desc">${escapeHtml(p.description)}</p>` : ''}
+            ${(labelChips || due) ? `
+                <div class="pbi-card-meta">
+                    ${labelChips}
+                    ${due ? `<span class="pbi-card-due ${overdue ? 'overdue' : ''}">${due.toISOString().slice(0,10)}</span>` : ''}
+                </div>` : ''}
+        `;
+        card.querySelector('[data-act="edit"]').addEventListener('click', (e) => {
+            e.stopPropagation();
+            openPbiModal(p);
         });
-        charts.set(w.id, chart);
+        // Double-click anywhere on the card → edit (matches Trello/Azure muscle memory)
+        card.addEventListener('dblclick', () => openPbiModal(p));
+        return card;
     }
 
-    // ── Mutations ─────────────────────────────────────────────────────
-    async function persistLayout(items) {
-        const payload = items.map(it => ({
-            id: parseInt(it.el.dataset.widgetId, 10),
-            gridX: it.x, gridY: it.y, gridW: it.w, gridH: it.h
-        })).filter(p => Number.isInteger(p.id));
-        if (payload.length === 0) return;
-        await api('PATCH', `/api/workspace/boards/${currentBoardId}/widgets/layout`, payload);
-        stamp('Konum kaydedildi');
+    // ── SortableJS wiring ──────────────────────────────────────────
+    function wireSortables() {
+        // Tear down old instances first — we rebuild on every render to keep things simple
+        // and to make sure the new DOM references are bound.
+        for (const s of sortables) s.destroy();
+        sortables.length = 0;
+
+        document.querySelectorAll('[data-col-body]').forEach(body => {
+            const s = Sortable.create(body, {
+                group: 'pbi',
+                animation: 140,
+                ghostClass: 'sortable-ghost',
+                chosenClass: 'sortable-chosen',
+                onEnd: async (evt) => {
+                    const id = parseInt(evt.item.dataset.id, 10);
+                    const newState = evt.to.closest('.kb-col').dataset.state;
+                    const newIndex = evt.newIndex;
+                    // Optimistic: card is already in the new DOM position. Fire server move,
+                    // then re-fetch the snapshot to pick up server-side renumbering. If the
+                    // server rejects, the refresh will snap it back to the truth.
+                    await api('PATCH', `/api/workspace/pbis/${id}/move`, { state: newState, sortOrder: newIndex });
+                    await refresh();
+                }
+            });
+            sortables.push(s);
+        });
     }
 
-    async function deleteWidget(id) {
-        if (!confirm('Bu widget silinsin mi?')) return;
-        await api('DELETE', `/api/workspace/widgets/${id}`);
-        await refresh();
-    }
+    // ── PBI modal ──────────────────────────────────────────────────
+    function openPbiModal(pbi) {
+        const isEdit = !!pbi;
+        document.getElementById('pbiModalTitle').textContent = isEdit ? 'Kartı Düzenle' : 'Yeni Kart';
+        document.getElementById('pbiId').value           = isEdit ? pbi.id : '';
+        document.getElementById('pbiTitle').value        = isEdit ? pbi.title : '';
+        document.getElementById('pbiDescription').value  = isEdit ? (pbi.description || '') : '';
+        document.getElementById('pbiState').value        = isEdit ? pbi.state : 'Backlog';
+        document.getElementById('pbiPriority').value     = isEdit ? pbi.priority : 2;
+        document.getElementById('pbiDueDate').value      = isEdit && pbi.dueDateUtc ? pbi.dueDateUtc.slice(0,10) : '';
+        document.getElementById('pbiDeleteBtn').style.display = isEdit ? 'inline-flex' : 'none';
 
-    function openWidgetSettings(w) {
-        // Simple inline approach: prompt for new title; deep config edit lives inside each
-        // widget body (Counter buttons, Note textarea, etc.) rather than a separate modal.
-        const newTitle = prompt('Widget başlığı', w.title || '');
-        if (newTitle == null) return;
-        api('PATCH', `/api/workspace/widgets/${w.id}`, { title: newTitle }).then(refresh);
-    }
-
-    // ── Modal handlers ────────────────────────────────────────────────
-    function openAddBoardModal() { closeAllModals(); document.getElementById('addBoardModal').classList.add('open'); }
-    function openEditBoardModal() {
-        if (!currentBoard) return;
-        document.getElementById('editBoardName').value  = currentBoard.name;
-        document.getElementById('editBoardGoal').value  = currentBoard.goalText || '';
-        document.getElementById('editBoardRetro').value = currentBoard.retroNotes || '';
-        if (currentBoard.startUtc) document.getElementById('editBoardStart').value = currentBoard.startUtc.slice(0,16);
-        if (currentBoard.endUtc)   document.getElementById('editBoardEnd').value   = currentBoard.endUtc.slice(0,16);
-        document.getElementById('editSprintFields').style.display = currentBoard.kind === 'Sprint' ? 'block' : 'none';
-        closeAllModals(); document.getElementById('editBoardModal').classList.add('open');
-    }
-    function openAddWidgetModal() {
-        document.querySelectorAll('.widget-type-card').forEach(c => c.classList.remove('selected'));
-        document.getElementById('newWidgetTitle').value = '';
-        closeAllModals(); document.getElementById('addWidgetModal').classList.add('open');
-    }
-    function closeAllModals() { document.querySelectorAll('.ws-modal-backdrop').forEach(b => b.classList.remove('open')); }
-
-    async function submitAddBoard() {
-        const name = document.getElementById('newBoardName').value.trim();
-        const kind = document.getElementById('newBoardKind').value;
-        if (!name) return;
-        const body = { name, kind };
-        if (kind === 'Sprint') {
-            body.startUtc = toIso(document.getElementById('newBoardStart').value);
-            body.endUtc   = toIso(document.getElementById('newBoardEnd').value);
-            body.goalText = document.getElementById('newBoardGoal').value.trim() || null;
+        // Label picker chips — clickable, multi-select
+        const picker = document.getElementById('pbiLabelPicker');
+        picker.innerHTML = '';
+        const selectedSet = new Set(isEdit ? pbi.labelIds : []);
+        for (const l of labels) {
+            const chip = document.createElement('span');
+            chip.className = 'pbi-label-chip picker-chip' + (selectedSet.has(l.id) ? ' on' : '');
+            chip.style.background = l.color;
+            chip.dataset.id = l.id;
+            chip.textContent = l.name;
+            chip.addEventListener('click', () => {
+                const id = parseInt(chip.dataset.id, 10);
+                if (selectedSet.has(id)) { selectedSet.delete(id); chip.classList.remove('on'); }
+                else                     { selectedSet.add(id);   chip.classList.add('on'); }
+            });
+            picker.appendChild(chip);
         }
-        const res = await api('POST', '/api/workspace/boards', body);
+        // Stash on the modal element for submit access — DOM is the truth, no shadow state needed
+        document.getElementById('pbiModal').dataset.selected = JSON.stringify(Array.from(selectedSet));
+
+        // Refresh on every click so we read the latest selection
+        picker.addEventListener('click', () => {
+            const on = Array.from(picker.querySelectorAll('.picker-chip.on')).map(c => parseInt(c.dataset.id, 10));
+            document.getElementById('pbiModal').dataset.selected = JSON.stringify(on);
+        });
+
         closeAllModals();
-        await loadBoardList();
-        if (res && res.id) { currentBoardId = res.id; await refresh(); await loadBoardList(); }
+        document.getElementById('pbiModal').classList.add('open');
+        setTimeout(() => document.getElementById('pbiTitle').focus(), 50);
     }
 
-    async function submitEditBoard() {
+    async function submitPbi() {
+        const id      = document.getElementById('pbiId').value;
+        const title   = document.getElementById('pbiTitle').value.trim();
+        if (!title) { alert('Başlık zorunlu.'); return; }
         const body = {
-            name: document.getElementById('editBoardName').value.trim(),
-            goalText: document.getElementById('editBoardGoal').value.trim() || null,
-            retroNotes: document.getElementById('editBoardRetro').value.trim() || null,
-            startUtc: toIso(document.getElementById('editBoardStart').value),
-            endUtc:   toIso(document.getElementById('editBoardEnd').value)
+            title,
+            description: document.getElementById('pbiDescription').value,
+            state: document.getElementById('pbiState').value,
+            priority: parseInt(document.getElementById('pbiPriority').value, 10),
+            dueDateUtc: dateLocalToIso(document.getElementById('pbiDueDate').value),
+            labelIds: JSON.parse(document.getElementById('pbiModal').dataset.selected || '[]')
         };
-        await api('PATCH', `/api/workspace/boards/${currentBoardId}`, body);
+        if (id) {
+            // Edit doesn't take "state" (move endpoint owns that). PATCH only the editable fields.
+            const patch = { ...body }; delete patch.state;
+            await api('PATCH', `/api/workspace/pbis/${id}`, patch);
+            // If state changed in the modal, do a separate move call so column logic stays in one place
+            const original = pbis.find(p => p.id === parseInt(id, 10));
+            if (original && original.state !== body.state) {
+                await api('PATCH', `/api/workspace/pbis/${id}/move`, { state: body.state, sortOrder: 9999 });
+            }
+        } else {
+            await api('POST', '/api/workspace/pbis', body);
+        }
         closeAllModals();
-        await loadBoardList();
         await refresh();
     }
 
-    async function submitArchiveBoard() {
-        if (!confirm('Bu board arşivlensin mi? Sprint için "kapatma" olarak da kullanabilirsin.')) return;
-        await api('POST', `/api/workspace/boards/${currentBoardId}/archive`);
+    async function deletePbi() {
+        const id = document.getElementById('pbiId').value;
+        if (!id) return;
+        if (!confirm('Bu kart silinsin mi?')) return;
+        await api('DELETE', `/api/workspace/pbis/${id}`);
         closeAllModals();
-        // Switch to default board after archive
-        const list = await fetch('/api/workspace/boards').then(r => r.json());
-        if (list.length > 0) { currentBoardId = list[0].id; }
-        await loadBoardList();
         await refresh();
     }
 
-    async function submitAddWidget() {
-        const selected = document.querySelector('.widget-type-card.selected');
-        if (!selected) { alert('Lütfen bir tip seç.'); return; }
-        const type = selected.dataset.type;
-        const title = document.getElementById('newWidgetTitle').value.trim() || null;
-        const def = WIDGET_TYPES[type];
-        await api('POST', `/api/workspace/boards/${currentBoardId}/widgets`, {
-            type, title,
-            gridX: 0, gridY: 0, gridW: def.meta.w, gridH: def.meta.h,
-            configJson: def.defaultConfig()
+    // ── Labels modal ───────────────────────────────────────────────
+    function openLabelsModal() {
+        renderLabelsList();
+        closeAllModals();
+        document.getElementById('labelsModal').classList.add('open');
+    }
+
+    function renderLabelsList() {
+        const wrap = document.getElementById('labelsList');
+        wrap.innerHTML = '';
+        if (labels.length === 0) {
+            wrap.innerHTML = '<div style="color:var(--text-muted); padding:0.5rem 0;">Henüz etiket yok. Aşağıdan ekleyebilirsin.</div>';
+            return;
+        }
+        for (const l of labels) {
+            const row = document.createElement('div');
+            row.className = 'label-row';
+            row.innerHTML = `
+                <input type="color" value="${l.color}" data-id="${l.id}" data-field="color">
+                <input type="text"  value="${escapeAttr(l.name)}" data-id="${l.id}" data-field="name" maxlength="40">
+                <button class="del" data-id="${l.id}"><i class="fa-solid fa-trash"></i></button>
+            `;
+            const debouncedSave = debounce(async () => {
+                const color = row.querySelector('[data-field=color]').value;
+                const name  = row.querySelector('[data-field=name]').value.trim();
+                if (!name) return;
+                await api('PATCH', `/api/workspace/labels/${l.id}`, { name, color });
+                await refresh();
+            }, 500);
+            row.querySelectorAll('input').forEach(i => i.addEventListener('change', debouncedSave));
+            row.querySelector('.del').addEventListener('click', async () => {
+                if (!confirm(`"${l.name}" etiketi silinsin mi? Kartlardan kaldırılır.`)) return;
+                await api('DELETE', `/api/workspace/labels/${l.id}`);
+                await refresh();
+                renderLabelsList();
+            });
+            wrap.appendChild(row);
+        }
+    }
+
+    async function submitNewLabel() {
+        const name  = document.getElementById('newLabelName').value.trim();
+        const color = document.getElementById('newLabelColor').value;
+        if (!name) { alert('İsim zorunlu.'); return; }
+        const res = await fetch('/api/workspace/labels', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ name, color })
         });
-        closeAllModals();
+        if (res.status === 409) {
+            alert('Bu isimde bir etiket zaten var.');
+            return;
+        }
+        document.getElementById('newLabelName').value = '';
         await refresh();
+        renderLabelsList();
     }
 
-    // ── Utils ─────────────────────────────────────────────────────────
+    // ── Utils ──────────────────────────────────────────────────────
+    function closeAllModals() {
+        document.querySelectorAll('.kb-modal-backdrop').forEach(b => b.classList.remove('open'));
+    }
     async function api(method, url, body) {
         const opts = { method, headers: { 'Content-Type': 'application/json' } };
         if (body !== undefined) opts.body = JSON.stringify(body);
@@ -916,19 +602,12 @@
         const ct = res.headers.get('content-type') || '';
         return ct.includes('application/json') ? await res.json() : true;
     }
-    function safeJson(s) { try { return s ? JSON.parse(s) : null; } catch { return null; } }
     function escapeHtml(s) { const d = document.createElement('div'); d.textContent = s ?? ''; return d.innerHTML; }
     function escapeAttr(s) { return String(s ?? '').replace(/"/g, '&quot;'); }
-    function clamp(n, lo, hi) { return Math.max(lo, Math.min(hi, n)); }
-    function toIso(localValue) { return localValue ? new Date(localValue).toISOString() : null; }
-    function stamp(text) { document.getElementById('lastSaved').textContent = text + ' · ' + new Date().toLocaleTimeString(); }
-
-    function groupByDay(points) {
-        const map = new Map();
-        for (const p of points) {
-            const k = p.recordedAtUtc.slice(0,10);
-            map.set(k, (map.get(k) || 0) + p.value);
-        }
-        return Array.from(map.entries()).sort((a, b) => a[0].localeCompare(b[0])).map(([day, sum]) => ({ day, sum }));
+    function dateLocalToIso(v) { return v ? new Date(v + 'T00:00:00Z').toISOString() : null; }
+    function hexA(hex, alpha) {
+        const r = parseInt(hex.slice(1,3), 16), g = parseInt(hex.slice(3,5), 16), b = parseInt(hex.slice(5,7), 16);
+        return `rgba(${r},${g},${b},${alpha})`;
     }
+    function debounce(fn, ms) { let t; return (...a) => { clearTimeout(t); t = setTimeout(() => fn(...a), ms); }; }
 </script>
