@@ -416,7 +416,11 @@
         for (const c of charts.values()) c.destroy();
         charts.clear();
 
-        grid.removeAll(false);
+        // removeAll(true) detaches the DOM elements too. Without this, the old .grid-stack-item
+        // nodes linger from the previous render — gridstack stops tracking them but they remain
+        // visible behind the new ones, and after a couple of refreshes the visible state diverges
+        // from server state. removeAll() default is true; passing it explicitly to document intent.
+        grid.removeAll(true);
         if (!widgets || widgets.length === 0) {
             document.getElementById('emptyState').style.display = 'block';
             return;
@@ -450,6 +454,12 @@
             </div>
             <div class="widget-body"></div>`;
         item.appendChild(content);
+        // Gridstack 10.x: makeWidget() expects the element to ALREADY be inside grid.el. If you
+        // skip the appendChild it silently no-ops — the element exists in memory but never paints,
+        // which looks exactly like "I added a widget and nothing appeared". Either we appendChild
+        // first then makeWidget, or use addWidget(item) which does both. Doing it explicitly keeps
+        // the two steps visible.
+        grid.el.appendChild(item);
         grid.makeWidget(item);
 
         // Wire widget-level actions
